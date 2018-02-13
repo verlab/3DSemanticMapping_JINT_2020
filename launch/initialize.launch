@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+    <!-- start turtlebot-->
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch"> 
+    </include>
+
+    <!-- Start camera laser node -->
+    <!--<include file="$(find auto)/launch/sensor/scan_camera.launch"> 
+    </include>-->
+
+    <include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+        <arg name="scan_topic" value="camera/scan"/>
+    </include>
+
+    <!-- start hokuyo laser node-->
+    <include file="$(find auto)/launch/sensor/scan_hokuyo.launch"> 
+    </include>
+
+
+</launch>
