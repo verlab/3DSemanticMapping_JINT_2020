@@ -1,0 +1,30 @@
+<package>
+  <name>driver_common</name>
+  <version>1.6.8</version>
+  <description>
+    The driver_common stack contains classes and tools that are useful
+    throughout the driver stacks. It currently contains:
+
+    driver_base: A base class for sensors to provide a consistent state machine
+    (retries, error handling, etc.) and interface
+
+    timestamp_tools: Classes to help timestamp hardware events
+  </description>
+  <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
+  <license>BSD</license>
+
+  <url type="website">http://www.ros.org/wiki/driver_common</url>
+  <url type="bugtracker">https://github.com/ros-drivers/driver_common/issues</url>
+  <url type="repository">https://github.com/ros-drivers/driver_common</url>
+
+  <author>Blaise Gassend</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>driver_base</run_depend>
+  <run_depend>timestamp_tools</run_depend>
+
+  <export>
+    <metapackage/>
+  </export>
+</package>

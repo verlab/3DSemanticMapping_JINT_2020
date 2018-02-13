@@ -1,0 +1,5 @@
+# svr for the ClearCells service
+int8 weight
+sensor_msgs/LaserScan laser
+---
+float32 b

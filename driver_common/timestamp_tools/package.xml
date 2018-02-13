@@ -1,0 +1,23 @@
+<package>
+  <name>timestamp_tools</name>
+  <version>1.6.8</version>
+  <description>This package is currently for internal use only. Its API may change
+    without warning in the future.  This package is deprecated.</description>
+  <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://www.ros.org/wiki/timestamp_tools</url>
+  <url type="bugtracker">https://github.com/ros-drivers/driver_common/issues</url>
+  <url type="repository">https://github.com/ros-drivers/driver_common</url>
+
+  <author>Blaise Gassend</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roslib</build_depend>
+  <build_depend>roscpp</build_depend>
+
+  <run_depend>roslib</run_depend>
+  <run_depend>roscpp</run_depend>
+</package>

@@ -1,0 +1,32 @@
+<package>
+  <name>driver_base</name>
+  <version>1.6.8</version>
+  <description>A framework for writing drivers that helps with runtime reconfiguration, diagnostics and self-test.
+
+    This package is deprecated.</description>
+  <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://www.ros.org/wiki/driver_base</url>
+  <url type="bugtracker">https://github.com/ros-drivers/driver_common/issues</url>
+  <url type="repository">https://github.com/ros-drivers/driver_common</url>
+
+  <author>Blaise Gassend</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>self_test</build_depend>
+  <build_depend>diagnostic_updater</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <run_depend>message_runtime</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>self_test</run_depend>
+  <run_depend>diagnostic_updater</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>std_msgs</run_depend>
+</package>
