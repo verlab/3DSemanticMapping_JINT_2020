@@ -131,7 +131,8 @@ class ObjectProjector:
 	# Main method: get the published bounding boxes and transform to position in map.
 	def boundingBoxCallback(self, data):
 		frame = self.cloud.header.frame_id
-		boxes = data.boundingBoxes
+		#boxes = data.boundingBoxes
+		boxes = data.bounding_boxes
 
 		for box in boxes:
 			obj = WorldObject()

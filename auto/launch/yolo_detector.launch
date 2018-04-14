@@ -29,7 +29,7 @@
 
     <!--<param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />-->
     <param name="subscribers/camera_reading/topic"    value="/darknet_ros/camera_topic/image_raw" />
-    <param name="image_view/enable_opencv"            value="false" />
+    <!-- <param name="image_view/enable_opencv"            value="false" /> -->
   </node>
 
   <node pkg="auto" type="object_projector.py" name="object_projector" output="screen">
