@@ -27,15 +27,19 @@
     <param name="weights_path"          value="$(arg yolo_weights_path)" />
     <param name="config_path"           value="$(arg yolo_config_path)" />
 
-    <!--<param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />-->
-    <param name="subscribers/camera_reading/topic"    value="/darknet_ros/camera_topic/image_raw" />
+    <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />
+    <!--<param name="subscribers/camera_reading/topic"    value="/darknet_ros/camera_topic/image_raw" />-->
     <!-- <param name="image_view/enable_opencv"            value="false" /> -->
   </node>
 
-  <node pkg="auto" type="object_projector.py" name="object_projector" output="screen">
+  <!-- Start object projector node -->
+  <node pkg="auto" type="object_positioner" name="object_positioner_node" output="screen">
   </node>
 
-  <node pkg="auto" type="object_marker.py" name="object_marker" output="screen">
+  <!--<node pkg="auto" type="object_projector.py" name="object_projector" output="screen">
   </node>
+
+  <node pkg="auto" type="object_marker.py" name="object_marker" output="screen"> 
+  </node>-->
 
 </launch>
