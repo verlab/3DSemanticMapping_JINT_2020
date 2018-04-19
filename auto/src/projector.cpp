@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <vector>
+#include <math.h>
 
 // WorldObject
 #include "custom_msgs/WorldObject.h"
@@ -22,37 +23,11 @@
 #include <pcl/filters/voxel_grid.h>
 
 
-/** 
- * Annoying conversions table
- * 
- * 
- * ///////////////////////////////////
- * 
- * pcl::PCLPointCloud2 <-> pcl::PointCloud<pcl::PointXYZ>
-
-   pcl::PCLPointCloud2 point_cloud2;
-   pcl::PointCloud<pcl::PointXYZ> point_cloud;
-
-   pcl::fromPCLPointCloud2( point_cloud2, point_cloud);
-   pcl::toPCLPointCloud2(point_cloud, point_cloud2);
-
-* /////////////////////////////////////
-*
-* sensor_msgs::PointCloud2 <-> pcl::PointCloud<pcl::PointXYZ>
-* 
-   sensor_msgs::PointCloud2 msg_cloud2;
-   pcl::PointCloud<pcl::PointXYZ> point_cloud;
-
-   pcl::fromROSMsg(msg_cloud2, point_cloud);
-   pcl::toROSMsg(point_cloud, msg_cloud2);
-*
-**/
-
 std::string node_topic = "projector";
 std::string ref_frame = "camera_link";
 std::string pointcloud_topic = "camera/depth/points";
 std::string boxes_topic = "darknet_ros/bounding_boxes";
-std::string out_topic = "objects";
+std::string out_topic = "objects_raw";
 
 class Projector
 {
@@ -148,6 +123,14 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             end.z -= coefficients.values[2] * 0.8;
             markArrow(start, end);
         }
+
+        // Calculate angle of -normal in XY plane (Z is upwards in map frame... I guess)
+        float x = -coefficients.values[0];
+        float y = -coefficients.values[1];
+        double angle = atan2(y, x);
+        obj.x = mean.x;
+        obj.y = mean.y;
+        obj.angle = angle;
     }
 
     else
@@ -197,8 +180,12 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         // Set frame 
         cloud_msg.header.frame_id = ref_frame;
         **/
+
         // Process data in core function to generate a world object
         object = process_cloud(class_name, cropped);
+
+        // Publish encountered object
+        obj_pub.publish(object);
     }
 }
 
@@ -211,7 +198,6 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
         pcl_ros::transformPointCloud(ref_frame, *cloud2_ptr, cloud2, *listener);
 
     } catch (tf::TransformException ex) {
-        ROS_INFO_STREAM("killme\n");
         ROS_ERROR("%s",ex.what());
     }
 
@@ -250,92 +236,6 @@ void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end)
     marker.points = points;
 
     vis_pub.publish( marker );
-}
-
-void boxesCallback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr)
-{
-    // For each found element
-    int a = boxes_ptr->bounding_boxes.size();
-    for(int i = 0; i < a; i++)
-    {
-        // Object class
-        std::string str = boxes_ptr->bounding_boxes.at(i).Class;
-
-        // Object boundaries
-        int xmin = boxes_ptr->bounding_boxes.at(i).xmin;
-        int ymin = boxes_ptr->bounding_boxes.at(i).ymin;
-        int xmax = boxes_ptr->bounding_boxes.at(i).xmax;
-        int ymax = boxes_ptr->bounding_boxes.at(i).ymax;
-
-        // Crop pointcloud inside bounding box
-        pcl::PointCloud<pcl::PointXYZ> cropped; 
-        cropped.width = std::abs(xmax-xmin);
-        cropped.height = std::abs(ymax-ymin);
-        cropped.points.resize (cropped.width * cropped.height);
-
-        ROS_INFO_STREAM("xmin=" + std::to_string(xmin) + " xmax="+std::to_string(xmax)+ " ymin=" + std::to_string(ymin) + " ymax="+std::to_string(ymax)+"\n");
-        ROS_INFO_STREAM("cropped width=" + std::to_string(cropped.width) + " cropped height="+ std::to_string(cropped.height)+ "\n");
-
-
-        // Convert to ros msg
-        sensor_msgs::PointCloud2 cloud_msg;
-        pcl::toROSMsg(cropped, cloud_msg);
-
-        // Set frame 
-        cloud_msg.header.frame_id = "camera_link";      
-    }
-}
-
-
-// Using sensor_msgs::PCLPointCloud2
-void cloud_cb (const sensor_msgs::PointCloud2ConstPtr & cloud2_ptr)
-{
-    //ROS_INFO_STREAM("\nsome number " << 45);
-    sensor_msgs::PointCloud2 cloud_clone;
-
-    // Transform pointcloud frame 
-    sensor_msgs::PointCloud2 cloud2;
-    
-
-    // Transform pointcloud type
-    pcl::PointCloud<pcl::PointXYZ> cloud;
-    pcl::fromROSMsg( cloud2, cloud);
-
-    //cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
-
-    pcl::ModelCoefficients coefficients;
-    pcl::PointIndices inliers;
-    // Create the segmentation object
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
-    // Optional
-    seg.setOptimizeCoefficients (true);
-    // Mandatory
-    seg.setModelType (pcl::SACMODEL_PLANE);
-    seg.setMethodType (pcl::SAC_RANSAC);
-    seg.setDistanceThreshold (0.01);
-
-    // Convert the thing
-
-    seg.setInputCloud (cloud.makeShared());
-    seg.segment (inliers, coefficients); 
-
-    // Publish the model coefficients
-    pcl_msgs::ModelCoefficients ros_coefficients;
-    pcl_conversions::fromPCL(coefficients, ros_coefficients);
-    //pub.publish (ros_coefficients);
-
-    if(coefficients.values.size() == 4)
-    {
-        float x, y, z, x2, y2, z2;
-        x = -coefficients.values[0] * coefficients.values[3];
-        y = -coefficients.values[1] * coefficients.values[3];
-        z = -coefficients.values[2] * coefficients.values[3];
-        x2 = x *1.4f;
-        y2 = y *1.4f;
-        z2 = z *1.4f;
-        //publish_marker(x, y, z, x2, y2, z2);
-    }
-   
 }
 
 int main (int argc, char** argv)

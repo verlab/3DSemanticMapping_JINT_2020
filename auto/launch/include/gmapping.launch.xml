@@ -50,7 +50,7 @@
     
     <!--<param name="map_frame" value="openslam_map" /> -->
 
-    <remap from="map" to="openslam_map" />
+    <!--<remap from="map" to="openslam_map" />-->
     <remap from="scan" to="$(arg scan_topic)"/>
   </node>
 </launch>
