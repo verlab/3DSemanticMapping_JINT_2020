@@ -24,17 +24,25 @@
 
 
 std::string node_topic = "projector";
-std::string ref_frame = "camera_link";
+std::string ref_frame = "map";
+std::string global_frame = "map";
 std::string pointcloud_topic = "camera/depth/points";
 std::string boxes_topic = "darknet_ros/bounding_boxes";
 std::string out_topic = "objects_raw";
+
+bool use_mean = true;
+
+float camera_fx = 527.135883f;
+float camera_fy = 527.76315129f;
+float camera_cx = 306.5405905;
+float camera_cy = 222.41208797f;
 
 class Projector
 {
     public:
         Projector(ros::NodeHandle * node_handle, std::string node_topic, std::string ref_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic);
-
         custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud);
+        pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
 
     private:
 
@@ -103,13 +111,23 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         // Mean point location: 
         ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
         pcl::PointXYZ mean;
-        double mean_ratio = 1.0f/inliers.indices.size();
-        for(int i = 0; i < inliers.indices.size(); i++)
+
+        if(use_mean)
         {
-            int index = inliers.indices.at(i);
-            mean.x += obj_cloud.at(index).x*mean_ratio;
-            mean.y += obj_cloud.at(index).y*mean_ratio;
-            mean.z += obj_cloud.at(index).z*mean_ratio;
+            double mean_ratio = 1.0f/inliers.indices.size();
+            for(int i = 0; i < inliers.indices.size(); i++)
+            {
+                int index = inliers.indices.at(i);
+                mean.x += obj_cloud.at(index).x*mean_ratio;
+                mean.y += obj_cloud.at(index).y*mean_ratio;
+                mean.z += obj_cloud.at(index).z*mean_ratio;
+            }
+        }
+
+        // Find obj position using camera projection
+        if(!use_mean)
+        {
+
         }
         
         // Plot normal
@@ -140,6 +158,17 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
     return obj;
 }
+
+// Projects the (u,v) image point into the 
+pcl::PointXYZ Projector::pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v)
+{
+    pcl::PointXYZ p;
+
+
+
+    return p;
+}
+
 
 void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr)
 {
@@ -194,7 +223,9 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
     // Transform pointcloud frame 
     sensor_msgs::PointCloud2 cloud2;
     try{
-        //listener.waitForTransform("", "", ros::Time(0), ros::Duration(10.0) );
+        ros::Time now = ros::Time::now();
+        listener->waitForTransform("camera_rgb_optical_frame", ref_frame, now, ros::Duration(10.0) );
+        //listener->waitForTransform("camera_rgb_optical_frame", ref_frame, ros::Time(0), ros::Duration(10.0) );
         pcl_ros::transformPointCloud(ref_frame, *cloud2_ptr, cloud2, *listener);
 
     } catch (tf::TransformException ex) {
