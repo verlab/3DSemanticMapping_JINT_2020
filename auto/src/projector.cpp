@@ -3,6 +3,12 @@
 #include <vector>
 #include <math.h>
 
+// Frame transformations
+#include "tf/transform_datatypes.h"
+#include "tf_conversions/tf_eigen.h"
+#include "Eigen/Core"
+#include "Eigen/Geometry"
+
 // WorldObject
 #include "custom_msgs/WorldObject.h"
 
@@ -24,13 +30,14 @@
 
 
 std::string node_topic = "projector";
-std::string ref_frame = "map";
-std::string global_frame = "map";
+std::string ref_frame = "camera_rgb_optical_frame";
+//std::string global_frame = "map";
+std::string global_frame = "camera_link";
 std::string pointcloud_topic = "camera/depth/points";
 std::string boxes_topic = "darknet_ros/bounding_boxes";
 std::string out_topic = "objects_raw";
 
-bool use_mean = true;
+bool use_mean = false;
 
 float camera_fx = 527.135883f;
 float camera_fy = 527.76315129f;
@@ -40,8 +47,8 @@ float camera_cy = 222.41208797f;
 class Projector
 {
     public:
-        Projector(ros::NodeHandle * node_handle, std::string node_topic, std::string ref_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic);
-        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud);
+        Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::string global_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic);
+        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax);
         pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
 
     private:
@@ -66,7 +73,7 @@ class Projector
         void cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_ptr);
 };
 
-Projector::Projector(ros::NodeHandle * node_handle, std::string node_topic, std::string ref_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic)
+Projector::Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::string global_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic)
 {
     nh = node_handle;
     listener = new tf::TransformListener;
@@ -82,15 +89,15 @@ Projector::Projector(ros::NodeHandle * node_handle, std::string node_topic, std:
     vis_pub = nh->advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
 }
 
-custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud)
+custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax)
 {
     custom_msgs::WorldObject obj;
     obj.objClass = class_name;
 
     // door
     if (class_name == "door")
-    {   
-        // APPLY RANSAC
+    {
+        // Apply RANSAC in ref_frame
 
         pcl::ModelCoefficients coefficients;
         pcl::PointIndices inliers;
@@ -108,46 +115,99 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         seg.setInputCloud (obj_cloud.makeShared());
         seg.segment (inliers, coefficients); 
 
-        // Mean point location: 
+        // 1. Calculates object location in ref_frame: 
         ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
-        pcl::PointXYZ mean;
+        pcl::PointXYZ obj_position;
 
+        // Object location is the mean of points inside bounding box
         if(use_mean)
         {
             double mean_ratio = 1.0f/inliers.indices.size();
             for(int i = 0; i < inliers.indices.size(); i++)
             {
                 int index = inliers.indices.at(i);
-                mean.x += obj_cloud.at(index).x*mean_ratio;
-                mean.y += obj_cloud.at(index).y*mean_ratio;
-                mean.z += obj_cloud.at(index).z*mean_ratio;
+                obj_position.x += obj_cloud.at(index).x*mean_ratio;
+                obj_position.y += obj_cloud.at(index).y*mean_ratio;
+                obj_position.z += obj_cloud.at(index).z*mean_ratio;
             }
         }
 
-        // Find obj position using camera projection
+        // Object location is the middle point between two projections of bounding boxes into the plane found
         if(!use_mean)
         {
+            float u1 = (float) xmin;
+            float v1 = (float) ymax;
 
+            float u2 = (float) xmax;
+            float v2 = (float) ymax;
+
+            // Left projection
+            pcl::PointXYZ p1 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u1, v1);
+            pcl::PointXYZ p2 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u2, v2);
+            pcl::PointXYZ p_middle;
+            p_middle.x = (p1.x+p2.x)/2.0f;
+            p_middle.y = (p1.y+p2.y)/2.0f;
+            p_middle.z = (p1.z+p2.z)/2.0f;
+
+            obj_position = p_middle;
         }
         
+        // Convert location and normal of object from ref_frame to global_frame
+        tf::StampedTransform transform;
+        try{
+            ros::Time now = ros::Time::now();
+            listener->waitForTransform(ref_frame, global_frame, now, ros::Duration(3.0));
+            listener->lookupTransform(ref_frame, global_frame, ros::Time(0), transform);
+        }
+        catch(tf::TransformException ex)
+        {
+            ROS_ERROR("%s",ex.what());
+            ros::Duration(1.0).sleep();
+        }
+
+        // Rotation matrix and translation vector
+        tf::Matrix3x3 rot_tf = transform.getBasis();
+        tf::Vector3 trans_tf = transform.getOrigin();
+        
+        // optional: use eigen for matrix multiplication?
+        Eigen::Vector3d obj_pos_eigen(obj_position.x, obj_position.y, obj_position.z);
+        Eigen::Matrix3d Rot;
+        Eigen::Vector3d Trans;
+        tf::matrixTFToEigen(rot_tf, Rot);
+        tf::vectorTFToEigen(trans_tf, Trans);
+
+        // Rotate and translate position
+        obj_pos_eigen = Rot * obj_pos_eigen;
+        obj_pos_eigen = obj_pos_eigen + Trans;
+        
+        // Set position back from eigen
+        obj_position.x = obj_pos_eigen(0);
+        obj_position.y = obj_pos_eigen(1);
+        obj_position.z = obj_pos_eigen(2);
+
+        // Apply rotation to normal
+        Eigen::Vector3d obj_normal(coefficients.values[0], coefficients.values[1], coefficients.values[2]);
+        obj_normal = Rot * obj_normal;
+
         // Plot normal
         if(coefficients.values.size() == 4)
         {
             pcl::PointXYZ start, end;
-            start = mean;
-            end = mean;
-            end.x -= coefficients.values[0] * 0.8;
-            end.y -= coefficients.values[1] * 0.8;
-            end.z -= coefficients.values[2] * 0.8;
+            start = obj_position;
+            end = obj_position;
+            end.x = obj_normal(0) * 0.8;
+            end.y = obj_normal(1) * 0.8;
+            end.z = obj_normal(2) * 0.8;
             markArrow(start, end);
         }
 
-        // Calculate angle of -normal in XY plane (Z is upwards in map frame... I guess)
-        float x = -coefficients.values[0];
-        float y = -coefficients.values[1];
+        // Calculates object angle in ref_frame (in XY plane):
+        // It is the angle of -normal in XY plane (Z is upwards in usual map frame)
+        float x = obj_normal(0);
+        float y = obj_normal(1);
         double angle = atan2(y, x);
-        obj.x = mean.x;
-        obj.y = mean.y;
+        obj.x = obj_position.x;
+        obj.y = obj_position.y;
         obj.angle = angle;
     }
 
@@ -159,12 +219,12 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     return obj;
 }
 
-// Projects the (u,v) image point into the 
+// Projects the (u,v) image point into the plane and find 3D point
 pcl::PointXYZ Projector::pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v)
 {
     pcl::PointXYZ p;
 
-
+    // TODO finish this
 
     return p;
 }
@@ -211,7 +271,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         **/
 
         // Process data in core function to generate a world object
-        object = process_cloud(class_name, cropped);
+        object = process_cloud(class_name, cropped, xmin, xmax, ymin, ymax);
 
         // Publish encountered object
         obj_pub.publish(object);
@@ -251,7 +311,7 @@ void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end)
     points[1].y = end.y;
     points[1].z = end.z;
 
-    marker.header.frame_id = ref_frame;
+    marker.header.frame_id = global_frame;
     marker.header.stamp = ros::Time();
     marker.ns = "arrows";
     marker.id = 0;
@@ -276,7 +336,7 @@ int main (int argc, char** argv)
     ros::init (argc, argv, node_topic);
     ros::NodeHandle * nh = new ros::NodeHandle;
 
-    Projector proj(nh, node_topic, ref_frame, pointcloud_topic, boxes_topic, out_topic);
+    Projector proj(nh, ref_frame, global_frame, pointcloud_topic, boxes_topic, out_topic);
     
     // Spin
     ros::spin ();

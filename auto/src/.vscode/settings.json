@@ -18,6 +18,7 @@
         "exception": "cpp",
         "slist": "cpp",
         "iosfwd": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "core": "cpp"
     }
 }
