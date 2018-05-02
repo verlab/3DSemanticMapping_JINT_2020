@@ -66,7 +66,7 @@ class Projector
 
         // Debug variables
         ros::Publisher vis_pub;
-        void markArrow(pcl::PointXYZ start, pcl::PointXYZ end);
+        void markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame);
 
         // Callbacks
         void boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr);
@@ -136,14 +136,16 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         if(!use_mean)
         {
             float u1 = (float) xmin;
-            float v1 = (float) ymax;
+            float v1 = (float) ymin;
 
             float u2 = (float) xmax;
             float v2 = (float) ymax;
 
+            float v_mean =(v1+v2)*0.5f;
+
             // Left projection
-            pcl::PointXYZ p1 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u1, v1);
-            pcl::PointXYZ p2 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u2, v2);
+            pcl::PointXYZ p1 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u1, v_mean);
+            pcl::PointXYZ p2 = pointFromUV(coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3], camera_fx, camera_fy, camera_cx, camera_cy, u2, v_mean);
             pcl::PointXYZ p_middle;
             p_middle.x = (p1.x+p2.x)/2.0f;
             p_middle.y = (p1.y+p2.y)/2.0f;
@@ -156,8 +158,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         tf::StampedTransform transform;
         try{
             ros::Time now = ros::Time::now();
-            listener->waitForTransform(ref_frame, global_frame, now, ros::Duration(3.0));
-            listener->lookupTransform(ref_frame, global_frame, ros::Time(0), transform);
+            listener->waitForTransform(global_frame, ref_frame, now, ros::Duration(3.0));
+            listener->lookupTransform(global_frame, ref_frame, ros::Time(0), transform);
         }
         catch(tf::TransformException ex)
         {
@@ -175,6 +177,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         Eigen::Vector3d Trans;
         tf::matrixTFToEigen(rot_tf, Rot);
         tf::vectorTFToEigen(trans_tf, Trans);
+
+        //ROS_INFO_STREAM("\nRot matrix " << Rot);
 
         // Rotate and translate position
         obj_pos_eigen = Rot * obj_pos_eigen;
@@ -195,10 +199,10 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             pcl::PointXYZ start, end;
             start = obj_position;
             end = obj_position;
-            end.x = obj_normal(0) * 0.8;
-            end.y = obj_normal(1) * 0.8;
-            end.z = obj_normal(2) * 0.8;
-            markArrow(start, end);
+            end.x += obj_normal(0) * 0.8;
+            end.y += obj_normal(1) * 0.8;
+            end.z += obj_normal(2) * 0.8;
+            markArrow(start, end, global_frame);
         }
 
         // Calculates object angle in ref_frame (in XY plane):
@@ -224,7 +228,9 @@ pcl::PointXYZ Projector::pointFromUV(float A, float B, float C, float D, float f
 {
     pcl::PointXYZ p;
 
-    // TODO finish this
+    p.z = -(D*fx*fy)/(fy*A*(u-cx) + fx*B*(v-cy) + C*fx*fy);
+    p.x = (u - cx)*p.z/fx;
+    p.y = (v - cy)*p.z/fy;
 
     return p;
 }
@@ -299,7 +305,7 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
     //pcl::fromROSMsg( cloud2, cloud_buffer);
 }
 
-void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end)
+void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame)
 {
     visualization_msgs::Marker marker;
 
@@ -311,7 +317,7 @@ void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end)
     points[1].y = end.y;
     points[1].z = end.z;
 
-    marker.header.frame_id = global_frame;
+    marker.header.frame_id = frame;
     marker.header.stamp = ros::Time();
     marker.ns = "arrows";
     marker.id = 0;
