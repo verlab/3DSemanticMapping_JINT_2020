@@ -31,8 +31,8 @@
 
 std::string node_topic = "projector";
 std::string ref_frame = "camera_rgb_optical_frame";
-//std::string global_frame = "map";
-std::string global_frame = "camera_link";
+std::string global_frame = "map";
+//std::string global_frame = "camera_link";
 std::string pointcloud_topic = "camera/depth/points";
 std::string boxes_topic = "darknet_ros/bounding_boxes";
 std::string out_topic = "objects_raw";

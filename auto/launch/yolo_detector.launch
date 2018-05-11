@@ -2,10 +2,10 @@
 
 <launch>
 
-  <node pkg="auto" type="image_publisher.py" name="image_publisher" output="screen">
+  <!--<node pkg="auto" type="image_publisher.py" name="image_publisher" output="screen">
     <remap from="input" to="/camera/rgb/image_raw" />
     <remap from="output" to="/darknet_ros/camera_topic/image_raw" />
-  </node>
+  </node>-->
 
 <!--
 	<include file="$(find darknet_ros)/launch/darknet_ros.launch"> 
@@ -29,7 +29,7 @@
 
     <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />
     <!--<param name="subscribers/camera_reading/topic"    value="/darknet_ros/camera_topic/image_raw" />-->
-    <!-- <param name="image_view/enable_opencv"            value="false" /> -->
+    <param name="image_view/enable_opencv"            value="true" />
   </node>
 
   <!-- Start object projector node -->

@@ -20,5 +20,6 @@
         "iosfwd": "cpp",
         "typeinfo": "cpp",
         "core": "cpp"
-    }
+    },
+    "python.linting.enabled": false
 }
