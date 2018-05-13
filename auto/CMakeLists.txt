@@ -10,10 +10,10 @@ project(auto)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   pcl_conversions
+  tf_conversions
   pcl_ros
   roscpp
   sensor_msgs
-  rviz_visual_tools
   darknet_ros_msgs
   custom_msgs
 )

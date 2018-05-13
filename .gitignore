@@ -1,3 +1,4 @@
 *.pyc
 CMakeLists.txt
 pcl_tutorial/
+*.json
