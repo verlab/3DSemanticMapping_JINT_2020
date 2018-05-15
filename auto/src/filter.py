@@ -99,11 +99,11 @@ def main(args):
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = doors.angles[i]
 			obj_filtered.prob = float(i)
-			obj_pub.publish(obj_filtered)
+			if doors.observations[i] > 4.0:
+				obj_pub.publish(obj_filtered)
 
 			# Publish marker
 			marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.4, doors.colors[i][0]/255.0, doors.colors[i][1]/255.0, doors.colors[i][2]/255.0)
-			#marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map')
 			marker_pub.publish(marker)
 
 
