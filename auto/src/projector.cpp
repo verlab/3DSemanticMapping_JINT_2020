@@ -163,6 +163,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
         catch(tf::TransformException ex)
         {
+            ROS_ERROR("Error transforming point\n!");            
             ROS_ERROR("%s",ex.what());
             ros::Duration(1.0).sleep();
         }
@@ -295,6 +296,7 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
         pcl_ros::transformPointCloud(ref_frame, *cloud2_ptr, cloud2, *listener);
 
     } catch (tf::TransformException ex) {
+        ROS_ERROR("Error transforming cloud\n!");        
         ROS_ERROR("%s",ex.what());
     }
 

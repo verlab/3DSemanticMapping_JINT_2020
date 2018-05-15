@@ -42,4 +42,7 @@
   <node pkg="auto" type="object_marker.py" name="object_marker" output="screen"> 
   </node>-->
 
+  <node pkg="auto" type="filter.py" name="kalman_filter" output="screen">
+  </node>
+
 </launch>
