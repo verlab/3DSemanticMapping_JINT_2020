@@ -27,7 +27,8 @@
     <param name="weights_path"          value="$(arg yolo_weights_path)" />
     <param name="config_path"           value="$(arg yolo_config_path)" />
 
-    <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />
+    <!-- <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" /> -->
+    <param name="subscribers/camera_reading/topic"    value="/camera/qhd/image_color" />
     <param name="image_view/enable_opencv"            value="true" />
   </node>
 
@@ -39,3 +40,4 @@
   </node>
 
 </launch>
+

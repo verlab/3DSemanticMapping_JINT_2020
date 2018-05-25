@@ -28,34 +28,51 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 
-
+// IN
 std::string node_topic = "projector";
 std::string ref_frame = "camera_rgb_optical_frame";
 //std::string global_frame = "map";
 std::string global_frame = "camera_link";
-std::string pointcloud_topic = "camera/depth/points";
+//std::string pointcloud_topic = "camera/depth/points";
+std::string pointcloud_topic = "/camera/qhd/points";
 std::string boxes_topic = "darknet_ros/bounding_boxes";
+
+// OUT
+std::string points_out = "camera/qhd/points_inliers";
 std::string out_topic = "objects_raw";
 
 bool use_mean = false;
 
-float camera_fx = 527.135883f;
-float camera_fy = 527.76315129f;
-float camera_cx = 306.5405905;
-float camera_cy = 222.41208797f;
+// Astra camera
+//float camera_fx = 527.135883f;
+//float camera_fy = 527.76315129f;
+//float camera_cx = 306.5405905;
+//float camera_cy = 222.41208797f;
+
+// Kinect V2
+float camera_fx = 1074.01f/2.0f;
+float camera_fy = 1073.9f/2.0f;
+float camera_cx = 945.3f/2.0f;
+float camera_cy = 537.4f/2.0f;
+
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 
 class Projector
 {
     public:
         Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::string global_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic);
-        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax);
+        //MOD
+        //custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax);
+        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZRGB> obj_cloud, int xmin, int xmax, int ymin, int ymax);
         pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
 
     private:
 
         tf::TransformListener * listener;
         ros::NodeHandle * nh;
-        pcl::PointCloud<pcl::PointXYZ> cloud_buffer;
+        //MOD
+        //pcl::PointCloud<pcl::PointXYZ> cloud_buffer;
+        pcl::PointCloud<pcl::PointXYZRGB> cloud_buffer;
 
         // Subscribers
         ros::Subscriber cloud_sub;
@@ -63,6 +80,7 @@ class Projector
 
         // Publishers
         ros::Publisher obj_pub;
+        ros::Publisher cloud_pub;
 
         // Debug variables
         ros::Publisher vis_pub;
@@ -84,21 +102,32 @@ Projector::Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::
 
     // Initialize Publishers
     obj_pub = nh->advertise<custom_msgs::WorldObject>(out_topic, 1);
+    cloud_pub = nh->advertise<sensor_msgs::PointCloud2>(points_out, 0);
+    //cloud_pub = nh->advertise<PointCloudRGB>(points_out, 0);
 
     // Initialize Debug variables
-    vis_pub = nh->advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
+    vis_pub = nh->advertise<visualization_msgs::Marker>( "raw_marker", 0 );
 }
 
-custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax)
+//MOD
+//custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax)
+custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZRGB> obj_cloud, int xmin, int xmax, int ymin, int ymax)
 {
+    // Convert from RGBXYZ to XYZ
+    pcl::PointCloud<pcl::PointXYZ> obj_cloud_xyz;
+    pcl::copyPointCloud(obj_cloud,obj_cloud_xyz);
+
     custom_msgs::WorldObject obj;
     obj.objClass = class_name;
+
+    pcl::PointCloud<pcl::PointXYZRGB> inlier_cloud;
+    //pcl::fromROSMsg( cloud2, cloud);
+    //cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
 
     // door
     if (class_name == "door")
     {
         // Apply RANSAC in ref_frame
-
         pcl::ModelCoefficients coefficients;
         pcl::PointIndices inliers;
 
@@ -111,14 +140,30 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         // Mandatory
         seg.setModelType (pcl::SACMODEL_PLANE);
         seg.setMethodType (pcl::SAC_RANSAC);
-        seg.setDistanceThreshold (0.01);
-        seg.setInputCloud (obj_cloud.makeShared());
+        seg.setDistanceThreshold (0.03);
+        //MOD
+        //seg.setInputCloud (obj_cloud.makeShared());
+        seg.setInputCloud (obj_cloud_xyz.makeShared());
         seg.segment (inliers, coefficients); 
+        inlier_cloud.width = inliers.indices.size();
+        inlier_cloud.height = 1;
+        inlier_cloud.resize(inlier_cloud.width);
+        for(int i = 0; i < inliers.indices.size(); i++)
+        {
+            int index = inliers.indices[i];
+            inlier_cloud.points[i] = obj_cloud.points[index];
+        }
 
-        // 1. Calculates object location in ref_frame: 
+        // Publish cloud
+        sensor_msgs::PointCloud2 inliers_msg;
+        pcl::toROSMsg(inlier_cloud, inliers_msg);
+        inliers_msg.header.frame_id = global_frame;
+        cloud_pub.publish(inliers_msg);
+
         ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
         pcl::PointXYZ obj_position;
 
+        // 1. Calculates object location in ref_frame:         
         // Object location is the mean of points inside bounding box
         if(use_mean)
         {
@@ -254,7 +299,9 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         int ymax = boxes_ptr->bounding_boxes.at(i).ymax;
 
         // Crop pointcloud inside bounding box
-        pcl::PointCloud<pcl::PointXYZ> cropped; 
+        //MOD
+        //pcl::PointCloud<pcl::PointXYZ> cropped; 
+        pcl::PointCloud<pcl::PointXYZRGB> cropped; 
         cropped.width = std::abs(xmax-xmin);
         cropped.height = std::abs(ymax-ymin);
         cropped.points.resize (cropped.width * cropped.height);
@@ -301,10 +348,13 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
     }
 
     // Transform pointcloud type and save to buffer
-    pcl::PointCloud<pcl::PointXYZ> cloud;
+    //MOD
+    //pcl::PointCloud<pcl::PointXYZ> cloud;
+    pcl::PointCloud<pcl::PointXYZRGB> cloud;
     pcl::fromROSMsg( cloud2, cloud);
-    cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
-    //pcl::fromROSMsg( cloud2, cloud_buffer);
+    //MOD
+    //cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
+    cloud_buffer = pcl::PointCloud<pcl::PointXYZRGB>(cloud);
 }
 
 void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame)
