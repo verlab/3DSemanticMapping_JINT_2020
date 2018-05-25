@@ -19,7 +19,8 @@
         "slist": "cpp",
         "iosfwd": "cpp",
         "typeinfo": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "initializer_list": "cpp"
     },
     "python.linting.enabled": false
 }
