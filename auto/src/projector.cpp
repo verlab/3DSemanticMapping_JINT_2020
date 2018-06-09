@@ -28,13 +28,18 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 
-// IN
+// NODE NAME 
 std::string node_topic = "projector";
-std::string ref_frame = "camera_rgb_optical_frame";
-//std::string global_frame = "map";
-std::string global_frame = "camera_link";
-//std::string pointcloud_topic = "camera/depth/points";
-std::string pointcloud_topic = "/camera/qhd/points";
+
+// FRAMES 
+std::string ref_frame = "camera_rgb_optical_frame"; // Camera rgb frame
+std::string global_frame = "map"; // Map frame aaaa
+//std::string global_frame = "camera_link"; // Debug - test without SLAM
+
+// POINTCLOUD TOPIC  
+std::string pointcloud_topic = "camera/depth/points"; // no rgb
+
+// DETECTOR TOPIC 
 std::string boxes_topic = "darknet_ros/bounding_boxes";
 
 // OUT
@@ -44,16 +49,16 @@ std::string out_topic = "objects_raw";
 bool use_mean = false;
 
 // Astra camera
-//float camera_fx = 527.135883f;
-//float camera_fy = 527.76315129f;
-//float camera_cx = 306.5405905;
-//float camera_cy = 222.41208797f;
+float camera_fx = 527.135883f;
+float camera_fy = 527.76315129f;
+float camera_cx = 306.5405905;
+float camera_cy = 222.41208797f;
 
 // Kinect V2
-float camera_fx = 1074.01f/2.0f;
-float camera_fy = 1073.9f/2.0f;
-float camera_cx = 945.3f/2.0f;
-float camera_cy = 537.4f/2.0f;
+//float camera_fx = 1074.01f/2.0f;
+//float camera_fy = 1073.9f/2.0f;
+//float camera_cx = 945.3f/2.0f;
+//float camera_cy = 537.4f/2.0f;
 
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 
