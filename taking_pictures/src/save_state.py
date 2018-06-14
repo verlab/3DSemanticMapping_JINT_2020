@@ -15,12 +15,13 @@ from custom_msgs.msg import WorldObject
 
 map_topic = 'map'
 objects_topic = 'objects_filtered'
+objects_raw_topic = 'objects_raw'
 robot_frame = 'base_link'
 map_frame = 'map'
 
 class state_saver:
 
-  def __init__(self, map_topic, objects_topic, robot_frame, map_frame):
+  def __init__(self, map_topic, objects_topic, objects_raw_topic, robot_frame, map_frame):
     self.count = 0 # Number of saved states
     self.objects_topic = objects_topic
     self.robot_frame = robot_frame
@@ -30,9 +31,12 @@ class state_saver:
     self.listener = tf.TransformListener()
     
     self.objects = []
+    self.objects_raw = []
+    self.robot_pos = []
 
     self.map_sub = rospy.Subscriber(map_topic, OccupancyGrid, self.map_callback)
     self.objects_sub = rospy.Subscriber(objects_topic, WorldObject, self.objects_callback)
+    self.objects_raw_sub = rospy.Subscriber(objects_raw_topic, WorldObject, self.objects_raw_callback)
   
   def getMapArray(self):
       for i in range(len(self.map.data)):
@@ -41,29 +45,22 @@ class state_saver:
           else :
             self.map.data[i] = int(255-(self.map.data[i]/100.0)*255)
               
-      return np.asarray(self.map.data).reshape((self.map.info.height, self.map.info.width))
+      return np.asarray(self.map.data).reshape((self.map.info.height, self.map.info.width)).astype(np.uint8)
 
   def getCellPosFromWorldPos(self, world_x, world_y):
     offsetX = world_x - self.map.info.origin.position.x
     offsetY = world_y - self.map.info.origin.position.y
-    cell_x = int(round(offsetX/self.map.info.resolution))
-    cell_y = int(round(offsetY/self.map.info.resolution))
+    cell_y = 0
+    cell_x = 0
+
+    if np.isnan(offsetX) or np.isnan(offsetY):
+      cell_x = 0
+      cell_y = 0
+    else:
+      cell_x = int(round(offsetX/self.map.info.resolution))
+      cell_y = int(round(offsetY/self.map.info.resolution))
 
     return cell_x, cell_y
-
-  def map_callback(self,data):
-    self.map = data
-    self.map.data = list(data.data)
-
-  def objects_callback(self, data):
-    added = False
-    for i in range(len(self.objects)):
-      if self.objects[i].objClass == data.objClass and self.objects[i].prob == data.prob:
-        added = True
-        break
-    if not added:
-      print 'Added new object!\n'
-      self.objects.append(data)
 
   def save_state(self):
     
@@ -92,25 +89,109 @@ class state_saver:
     map_image = self.getMapArray()
     im_name = 'map'+str(self.count)+'.png'
     cv2.imwrite(im_name, map_image)
-    
+
+  def save_robot_pos(self):
+    # Robot position
+    try:
+      now = rospy.Time.now() 
+      #self.listener.waitForTransform(self.robot_frame, self.map_frame, now, rospy.Duration(1.0))      
+      #(trans,rot) = self.listener.lookupTransform(self.robot_frame, self.map_frame, rospy.Time(0))
+      self.listener.waitForTransform(self.map_frame, self.robot_frame, now, rospy.Duration(1.0))
+      (trans,rot) = self.listener.lookupTransform(self.map_frame, self.robot_frame, rospy.Time(0))
+    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+      print 'Lookup error robot position'
+      return 
+
+    except Exception:
+      print 'No frame found yet. '
+      return 
+
+    robot_x = trans[0]
+    robot_y = trans[1]
+    quaternion = (rot[0], rot[1], rot[2], rot[3])
+    euler = tf.transformations.euler_from_quaternion(quaternion)
+    roll = euler[0]
+    pitch = euler[1]
+    yaw = euler[2]
+
+    # Apply rotation ... 
+    rot = [[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]]
+    #trans = np.matmul()
+
+    print 'trans: %f %f' % (robot_x, robot_y)
+    #print 'rot: %f %f %f \n' % (roll, pitch, yaw)
+    print 'rot: %f %f %f %f\n' % (quaternion[0], quaternion[1], quaternion[2], quaternion[3])
+
+    self.robot_pos.append((robot_x, robot_y))
+
+  def save_all(self):
+    map_image = self.getMapArray()
+    map_marked = self.getMapArray()
+
+    map_image = cv2.cvtColor(map_image,cv2.COLOR_GRAY2RGB)
+    map_marked = cv2.cvtColor(map_marked,cv2.COLOR_GRAY2RGB)
+
+    im_name = 'slam_map.png'
+    marked_name = 'maked_map.png'
+
+    # Mark robot path
+    for i in range(len(self.robot_pos)):
+      x_meters, y_meters = self.robot_pos[i]
+      x, y = self.getCellPosFromWorldPos(x_meters, y_meters)
+      print 'marking robot at %d %d ' % (x, y)
+      cv2.circle(map_marked, (x,y), 2, (0,200,0), -1)
+
+    # Mark found objects
+    for i in range(len(self.objects_raw)):
+      x_meters, y_meters = (self.objects_raw[i].x ,self.objects_raw[i].y) 
+      if np.isnan(x_meters) or np.isnan(y_meters) :
+        print "NaN value found\n" 
+        continue
+      x, y = self.getCellPosFromWorldPos(x_meters, y_meters)
+      print 'marking obj at %d %d ' % (x, y)      
+      cv2.circle(map_marked, (x,y), 1, (150,0,150), -1)
+
+    cv2.imwrite(im_name, map_image)
+    cv2.imwrite(marked_name, map_marked)
+
+# Callbacks
+  def map_callback(self,data):
+    self.map = data
+    self.map.data = list(data.data)
+
+  def objects_callback(self, data):
+    added = False
+    for i in range(len(self.objects)):
+      if self.objects[i].objClass == data.objClass and self.objects[i].prob == data.prob:
+        added = True
+        break
+    if not added:
+      print 'Added new object!\n'
+      self.objects.append(data)
+
+  def objects_raw_callback(self, data):
+    self.objects_raw.append(data)
+
 def main(args):
-  global map_topic, objects_topic, robot_frame, map_frame
+  global map_topic, objects_topic, robot_frame, map_frame, objects_raw_topic
 
   rospy.init_node('state_saver', anonymous=True)
-  ss = state_saver(map_topic, objects_topic, robot_frame, map_frame)
+  ss = state_saver(map_topic, objects_topic, objects_raw_topic, robot_frame, map_frame)
+  rate = rospy.Rate(1)
 
   while  not rospy.is_shutdown(): 
     try:
-      ina = raw_input('Press enter, take image. (q to exit)\n')
-      if ina == 'q' or ina == 'exit':
-          break
-      ss.save_state()
-      
-      #rospy.spin()
-    except KeyboardInterrupt:
-      print("Shutting down")
-      break
+      print("Saving robot position. \n")
+      ss.save_robot_pos()
+      rate.sleep()
 
+    except KeyboardInterrupt:
+      print("Keyboard exception. \n\n\n")
+      break
+  
+  print("Saving all and terminating. \n\n\n")
+  ss.save_all()
+  
 
 if __name__ == '__main__':
     main(sys.argv)

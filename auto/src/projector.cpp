@@ -33,13 +33,14 @@ std::string node_topic = "projector";
 
 // FRAMES 
 std::string ref_frame = "camera_rgb_optical_frame"; // Camera rgb frame
-std::string global_frame = "map"; // Map frame aaaa
+std::string global_frame = "map"; // Map frame
 //std::string global_frame = "camera_link"; // Debug - test without SLAM
 
 // POINTCLOUD TOPIC  
-std::string pointcloud_topic = "camera/depth/points"; // no rgb
+//std::string pointcloud_topic = "camera/depth/points"; // no rgb
+std::string pointcloud_topic = "camera/depth_registered/points"; // rgb
 
-// DETECTOR TOPIC 
+// DETECTOR TOPIC   
 std::string boxes_topic = "darknet_ros/bounding_boxes";
 
 // OUT
@@ -89,6 +90,7 @@ class Projector
 
         // Debug variables
         ros::Publisher vis_pub;
+        int count; 
         void markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame);
 
         // Callbacks
@@ -100,6 +102,7 @@ Projector::Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::
 {
     nh = node_handle;
     listener = new tf::TransformListener;
+    count = 0;
 
     // Initialize Subscribers
     cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
@@ -289,6 +292,8 @@ pcl::PointXYZ Projector::pointFromUV(float A, float B, float C, float D, float f
 
 void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr)
 {
+    count++; 
+    ROS_INFO_STREAM("\nReceived box "+std::to_string( count));
     int box_num = boxes_ptr->bounding_boxes.size();
 
     for(int i = 0; i < box_num; i++)
@@ -317,23 +322,15 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
             for(int y = 0; y < cropped.height; y++)
                 cropped.at(x, y) = cloud_buffer.at(x+xmin, y+ymin);
 
-        // Set frame
-        //cropped.header.frame_id = ref_frame;
-
-        /**
-        // Convert to ros msg
-        sensor_msgs::PointCloud2 cloud_msg;
-        pcl::toROSMsg(cropped, cloud_msg);
-
-        // Set frame 
-        cloud_msg.header.frame_id = ref_frame;
-        **/
+        
 
         // Process data in core function to generate a world object
         object = process_cloud(class_name, cropped, xmin, xmax, ymin, ymax);
 
         // Publish encountered object
         obj_pub.publish(object);
+
+        ROS_INFO_STREAM("\nProcessed box "+std::to_string( count));
     }
 }
 

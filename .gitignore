@@ -3,3 +3,4 @@ CMakeLists.txt
 pcl_tutorial/
 *.json
 downsampling_publish/
+*.png

@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 
 <launch>
-
   <!--<node pkg="auto" type="image_publisher.py" name="image_publisher" output="screen">
     <remap from="input" to="/camera/rgb/image_raw" />
     <remap from="output" to="/darknet_ros/camera_topic/image_raw" />
@@ -32,11 +31,13 @@
   </node>
 
   <!-- Start object projector node -->
-  <node pkg="auto" type="object_positioner" name="object_positioner_node" output="screen">
+  <!--
+  <node pkg="auto" type="object_positioner" name="object_positioner_node" output="screen" launch-prefix="nice -n -15">
   </node>
-
+  -->
+  <!-- 
   <node pkg="auto" type="filter.py" name="kalman_filter" output="screen">
   </node>
-
+  -->
 </launch>
 
