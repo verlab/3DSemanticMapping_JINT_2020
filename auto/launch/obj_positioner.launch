@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<launch>
+
+<node pkg="auto" type="object_positioner" name="object_positioner" output="screen">
+<param name="pointcloud_topic" type="string" value="camera/depth_registered/points" />
+<param name="boxes_topic" type="string" value="darknet_ros/bounding_boxes" />
+<param name="detection_flag_topic" type="string" value="darknet_ros/flag_detection" />
+
+<param name="camera_frame" type="string" value="camera_rgb_optical_frame" />
+<param name="robot_frame" type="string" value="base_link" />
+<param name="global_frame" type="string" value="map" />
+
+<param name="camera_cx" type="double" value="306.54059" />
+<param name="camera_cy" type="double" value="222.412087" />
+<param name="camera_fx" type="double" value="527.135883" />
+<param name="camera_fy" type="double" value="527.763151" />
+
+<param name="max_proj_distance" type="double" value="6.0" />
+
+</node>
+
+</launch>

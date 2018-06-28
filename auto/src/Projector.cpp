@@ -1,141 +1,93 @@
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-#include <vector>
-#include <math.h>
+#include "Projector.h"
 
-// Frame transformations
-#include "tf/transform_datatypes.h"
-#include "tf_conversions/tf_eigen.h"
-#include "Eigen/Core"
-#include "Eigen/Geometry"
+using std::string;
 
-// WorldObject
-#include "custom_msgs/WorldObject.h"
-
-// Darknet
-#include <darknet_ros_msgs/BoundingBoxes.h>
-
-// PCL specific includes
-#include <sensor_msgs/PointCloud2.h>
-#include <visualization_msgs/Marker.h>
-#include <geometry_msgs/Point.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include "pcl_ros/transforms.h"
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/filters/voxel_grid.h>
-
-// NODE NAME 
-std::string node_topic = "projector";
-
-// FRAMES 
-std::string ref_frame = "camera_rgb_optical_frame"; // Camera rgb frame
-std::string global_frame = "map"; // Map frame
-//std::string global_frame = "camera_link"; // Debug - test without SLAM
-
-// POINTCLOUD TOPIC  
-//std::string pointcloud_topic = "camera/depth/points"; // no rgb
-std::string pointcloud_topic = "camera/depth_registered/points"; // rgb
-
-// DETECTOR TOPIC   
-std::string boxes_topic = "darknet_ros/bounding_boxes";
-
-// OUT
-std::string points_out = "camera/qhd/points_inliers";
-std::string out_topic = "objects_raw";
-
-bool use_mean = false;
-
-// Astra camera
-float camera_fx = 527.135883f;
-float camera_fy = 527.76315129f;
-float camera_cx = 306.5405905;
-float camera_cy = 222.41208797f;
-
-// Kinect V2
-//float camera_fx = 1074.01f/2.0f;
-//float camera_fy = 1073.9f/2.0f;
-//float camera_cx = 945.3f/2.0f;
-//float camera_cy = 537.4f/2.0f;
-
-typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
-
-class Projector
-{
-    public:
-        Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::string global_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic);
-        //MOD
-        //custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax);
-        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZRGB> obj_cloud, int xmin, int xmax, int ymin, int ymax);
-        pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
-
-    private:
-
-        tf::TransformListener * listener;
-        ros::NodeHandle * nh;
-        //MOD
-        //pcl::PointCloud<pcl::PointXYZ> cloud_buffer;
-        pcl::PointCloud<pcl::PointXYZRGB> cloud_buffer;
-
-        // Subscribers
-        ros::Subscriber cloud_sub;
-        ros::Subscriber boxes_sub; 
-
-        // Publishers
-        ros::Publisher obj_pub;
-        ros::Publisher cloud_pub;
-
-        // Debug variables
-        ros::Publisher vis_pub;
-        int count; 
-        void markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame);
-
-        // Callbacks
-        void boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr);
-        void cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_ptr);
-};
-
-Projector::Projector(ros::NodeHandle * node_handle, std::string ref_frame, std::string global_frame, std::string pointcloud_topic, std::string boxes_topic, std::string out_topic)
+Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic)
 {
     nh = node_handle;
     listener = new tf::TransformListener;
     count = 0;
+    block_projection = false;
+    rotation_optmization = true;
+    last_rotation = 0.0f;
+    block_count = 0;
+    this->use_mean = false;
+    max_proj_dist = 5.0;
+    too_far = true;
 
     // Initialize Subscribers
     cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
     boxes_sub = nh->subscribe(boxes_topic, 1, &Projector::boxes_callback, this);
+    detection_flag_topic_sub = nh->subscribe(detection_flag_topic, 1, &Projector::flag_callback, this);
+    if(rotation_optmization)
+        odom_sub = nh->subscribe(odom_topic, 1, &Projector::odom_callback, this);
 
     // Initialize Publishers
     obj_pub = nh->advertise<custom_msgs::WorldObject>(out_topic, 1);
-    cloud_pub = nh->advertise<sensor_msgs::PointCloud2>(points_out, 0);
-    //cloud_pub = nh->advertise<PointCloudRGB>(points_out, 0);
 
     // Initialize Debug variables
     vis_pub = nh->advertise<visualization_msgs::Marker>( "raw_marker", 0 );
 }
 
-//MOD
-//custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax)
-custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZRGB> obj_cloud, int xmin, int xmax, int ymin, int ymax)
-{
-    // Convert from RGBXYZ to XYZ
-    pcl::PointCloud<pcl::PointXYZ> obj_cloud_xyz;
-    pcl::copyPointCloud(obj_cloud,obj_cloud_xyz);
+void Projector::flag_callback(const std_msgs::Int8 & flag)
+{   
+    try{
+        listener->waitForTransform(global_frame, camera_frame, ros::Time::now(), ros::Duration(10.0) );
+        listener->lookupTransform(global_frame, camera_frame, ros::Time(0), transform_buffer);
+        listener->lookupTransform(global_frame, robot_frame, ros::Time(0), robot_transform);
+    }
+    catch(tf::TransformException ex)
+    {
+        ROS_ERROR("Error transforming point\n!");            
+        ROS_ERROR("%s",ex.what());
+        ros::Duration(1.0).sleep();
+    }
+}
 
+void Projector::odom_callback(const nav_msgs::Odometry & odom)
+{
+    double roll, pitch, yaw;
+    auto ori = odom.pose.pose.orientation;
+    tf::Quaternion q(ori.x, ori.y, ori.z, ori.w);
+    tf::Matrix3x3 m(q);
+    m.getRPY(roll, pitch, yaw);
+
+    float rotation = yaw;
+    if (std::abs(rotation - last_rotation) > 0.06)
+    {
+        block_projection = true; 
+        block_count = 4;
+    } 
+    else
+    {
+        if (block_count > 1) 
+        {
+            block_projection = true;
+            block_count--;
+        }
+        
+        else block_projection = false;
+    }
+
+    //if(block_projection) ROS_INFO_STREAM("\nX");
+    //else ROS_INFO_STREAM("\nAllow");
+
+    last_rotation = rotation;
+}
+
+custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax)
+{
     custom_msgs::WorldObject obj;
     obj.objClass = class_name;
 
-    pcl::PointCloud<pcl::PointXYZRGB> inlier_cloud;
+    pcl::PointCloud<pcl::PointXYZ> inlier_cloud;
     //pcl::fromROSMsg( cloud2, cloud);
     //cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
 
     // door
     if (class_name == "door")
     {
-        // Apply RANSAC in ref_frame
+        // Apply RANSAC in camera_frame
         pcl::ModelCoefficients coefficients;
         pcl::PointIndices inliers;
 
@@ -149,10 +101,12 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         seg.setModelType (pcl::SACMODEL_PLANE);
         seg.setMethodType (pcl::SAC_RANSAC);
         seg.setDistanceThreshold (0.03);
-        //MOD
-        //seg.setInputCloud (obj_cloud.makeShared());
-        seg.setInputCloud (obj_cloud_xyz.makeShared());
+        seg.setInputCloud (obj_cloud.makeShared());
         seg.segment (inliers, coefficients); 
+
+/**     
+ *      Publish inliers?
+ * 
         inlier_cloud.width = inliers.indices.size();
         inlier_cloud.height = 1;
         inlier_cloud.resize(inlier_cloud.width);
@@ -161,17 +115,16 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             int index = inliers.indices[i];
             inlier_cloud.points[i] = obj_cloud.points[index];
         }
-
-        // Publish cloud
         sensor_msgs::PointCloud2 inliers_msg;
         pcl::toROSMsg(inlier_cloud, inliers_msg);
         inliers_msg.header.frame_id = global_frame;
         cloud_pub.publish(inliers_msg);
+**/
 
         ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
         pcl::PointXYZ obj_position;
 
-        // 1. Calculates object location in ref_frame:         
+        // 1. Calculates object location in camera_frame:         
         // Object location is the mean of points inside bounding box
         if(use_mean)
         {
@@ -207,12 +160,13 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             obj_position = p_middle;
         }
         
-        // Convert location and normal of object from ref_frame to global_frame
+        // Convert location and normal of object from camera_frame to global_frame
+        /*
         tf::StampedTransform transform;
         try{
             ros::Time now = ros::Time::now();
-            listener->waitForTransform(global_frame, ref_frame, now, ros::Duration(3.0));
-            listener->lookupTransform(global_frame, ref_frame, ros::Time(0), transform);
+            listener->waitForTransform(global_frame, camera_frame, now, ros::Duration(3.0));
+            listener->lookupTransform(global_frame, camera_frame, ros::Time(0), transform);
         }
         catch(tf::TransformException ex)
         {
@@ -220,9 +174,9 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             ROS_ERROR("%s",ex.what());
             ros::Duration(1.0).sleep();
         }
-
+        */
         // Rotation matrix and translation vector
-        tf::Matrix3x3 rot_tf = transform.getBasis();
+        tf::Matrix3x3 rot_tf = transform.getBasis();       
         tf::Vector3 trans_tf = transform.getOrigin();
         
         // optional: use eigen for matrix multiplication?
@@ -231,8 +185,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         Eigen::Vector3d Trans;
         tf::matrixTFToEigen(rot_tf, Rot);
         tf::vectorTFToEigen(trans_tf, Trans);
-
-        //ROS_INFO_STREAM("\nRot matrix " << Rot);
 
         // Rotate and translate position
         obj_pos_eigen = Rot * obj_pos_eigen;
@@ -247,6 +199,17 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         Eigen::Vector3d obj_normal(coefficients.values[0], coefficients.values[1], coefficients.values[2]);
         obj_normal = Rot * obj_normal;
 
+        // Verify normal is pointing to correct direction (always away from robot)
+        Eigen::Vector3d robot_normal(1.0, 0.0, 0.0);
+        tf::Matrix3x3 rot_tf_robot = robot_transform.getBasis();
+        Eigen::Matrix3d Rot_robot;
+        tf::matrixTFToEigen(rot_tf_robot, Rot_robot);
+        robot_normal = Rot_robot * robot_normal;
+        if (robot_normal.dot(obj_normal) < 0) 
+        {
+            obj_normal *= -1;
+        }
+
         // Plot normal
         if(coefficients.values.size() == 4)
         {
@@ -256,10 +219,16 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             end.x += obj_normal(0) * 0.8;
             end.y += obj_normal(1) * 0.8;
             end.z += obj_normal(2) * 0.8;
-            markArrow(start, end, global_frame);
+
+            //Mark in green or red 
+            if (too_far)
+              markArrow(start, end, global_frame, 1, 1.0, 0.0, 0.0);
+
+            else 
+              markArrow(start, end, global_frame, 1, 0.0, 1.0, 0.0);
         }
 
-        // Calculates object angle in ref_frame (in XY plane):
+        // Calculates object angle in camera_frame (in XY plane):
         // It is the angle of -normal in XY plane (Z is upwards in usual map frame)
         float x = obj_normal(0);
         float y = obj_normal(1);
@@ -293,6 +262,7 @@ pcl::PointXYZ Projector::pointFromUV(float A, float B, float C, float D, float f
 void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr)
 {
     count++; 
+    transform = transform_buffer;
     ROS_INFO_STREAM("\nReceived box "+std::to_string( count));
     int box_num = boxes_ptr->bounding_boxes.size();
 
@@ -309,29 +279,51 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         int ymax = boxes_ptr->bounding_boxes.at(i).ymax;
 
         // Crop pointcloud inside bounding box
-        //MOD
-        //pcl::PointCloud<pcl::PointXYZ> cropped; 
-        pcl::PointCloud<pcl::PointXYZRGB> cropped; 
+        pcl::PointCloud<pcl::PointXYZ> cropped; 
         cropped.width = std::abs(xmax-xmin);
         cropped.height = std::abs(ymax-ymin);
         cropped.points.resize (cropped.width * cropped.height);
-
-        //ROS_INFO_STREAM("\nPointcloud dim: "+ std::to_string(cloud_buffer.width) + " "+ std::to_string(cloud_buffer.height));
 
         for(int x = 0; x < cropped.width; x++)
             for(int y = 0; y < cropped.height; y++)
                 cropped.at(x, y) = cloud_buffer.at(x+xmin, y+ymin);
 
         
+        if(!block_projection)
+        {
+            // Process data in core function to generate a world object
+            object = process_cloud(class_name, cropped, xmin, xmax, ymin, ymax);
 
-        // Process data in core function to generate a world object
-        object = process_cloud(class_name, cropped, xmin, xmax, ymin, ymax);
-
-        // Publish encountered object
-        obj_pub.publish(object);
-
-        ROS_INFO_STREAM("\nProcessed box "+std::to_string( count));
+            // Verify object is not too far away 
+            float d = distanceFromRobot(object.x, object.y);
+            if(d <= max_proj_dist)
+            {
+              // Publish encountered object
+              too_far = false;              
+              obj_pub.publish(object);
+              ROS_INFO_STREAM("\nProcessed box "+std::to_string( count));
+            }
+            else
+            {
+              too_far = true;
+              ROS_INFO_STREAM("\nToo faar away!");
+            }
+        }
+        else
+        {
+            ROS_INFO_STREAM("\nBlocked Projection!!");
+        }
     }
+}
+
+float Projector::distanceFromRobot(float x, float y)
+{
+  tf::Vector3 trans_robot = robot_transform.getOrigin();
+  float dx = (trans_robot.getX() - x);
+  float dy = (trans_robot.getY() - y);
+  float dist = sqrt(pow(dx, 2.0) + pow(dy, 2.0));
+  ROS_INFO_STREAM("\n dist: " + std::to_string(dist));
+  return dist; 
 }
 
 void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_ptr)
@@ -340,64 +332,54 @@ void Projector::cloud_callback(const sensor_msgs::PointCloud2ConstPtr & cloud2_p
     sensor_msgs::PointCloud2 cloud2;
     try{
         ros::Time now = ros::Time::now();
-        listener->waitForTransform("camera_rgb_optical_frame", ref_frame, now, ros::Duration(10.0) );
-        //listener->waitForTransform("camera_rgb_optical_frame", ref_frame, ros::Time(0), ros::Duration(10.0) );
-        pcl_ros::transformPointCloud(ref_frame, *cloud2_ptr, cloud2, *listener);
+        listener->waitForTransform("camera_rgb_optical_frame", camera_frame, now, ros::Duration(10.0) );
+        pcl_ros::transformPointCloud(camera_frame, *cloud2_ptr, cloud2, *listener);
 
     } catch (tf::TransformException ex) {
         ROS_ERROR("Error transforming cloud\n!");        
         ROS_ERROR("%s",ex.what());
     }
 
-    // Transform pointcloud type and save to buffer
-    //MOD
-    //pcl::PointCloud<pcl::PointXYZ> cloud;
-    pcl::PointCloud<pcl::PointXYZRGB> cloud;
-    pcl::fromROSMsg( cloud2, cloud);
-    //MOD
-    //cloud_buffer = pcl::PointCloud<pcl::PointXYZ>(cloud);
-    cloud_buffer = pcl::PointCloud<pcl::PointXYZRGB>(cloud);
+    // Transform pointcloud type from ros msg to pointcloud
+    pcl::fromROSMsg( cloud2, cloud_buffer);
+
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    /*
+     * Publish pointcloud
+
+    sensor_msgs::PointCloud2 cropped_msg;
+    pcl::toROSMsg(cloud_buffer, cropped_msg);
+    cropped_msg.header.frame_id = camera_frame;
+    cloud_pub.publish(cropped_msg);
+    */
 }
 
-void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame)
+void Projector::markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame, int id, double r, double g, double b)
 {
     visualization_msgs::Marker marker;
 
     std::vector<geometry_msgs::Point> points(2);
     points[0].x = start.x;
     points[0].y = start.y;
-    points[0].z = start.z;
+    points[0].z = start.z+1.0;
     points[1].x = end.x;
     points[1].y = end.y;
-    points[1].z = end.z;
+    points[1].z = end.z+1.0;
 
     marker.header.frame_id = frame;
     marker.header.stamp = ros::Time();
     marker.ns = "arrows";
-    marker.id = 0;
+    marker.id = id;
     marker.type = visualization_msgs::Marker::ARROW;
     marker.action = visualization_msgs::Marker::ADD;
-    marker.scale.x = 0.02;
-    marker.scale.y = 0.05;
-    marker.scale.z = 0.1;
+    marker.scale.x = 0.1;
+    marker.scale.y = 0.15;
+    marker.scale.z = 0.05;
     marker.color.a = 1.0; 
-    marker.color.r = 0.0;
-    marker.color.g = 1.0;
-    marker.color.b = 0.0;
+    marker.color.r = r;
+    marker.color.g = g;
+    marker.color.b = b;
     marker.points = points;
 
     vis_pub.publish( marker );
-}
-
-int main (int argc, char** argv)
-{
-
-    // Initialize ROS
-    ros::init (argc, argv, node_topic);
-    ros::NodeHandle * nh = new ros::NodeHandle;
-
-    Projector proj(nh, ref_frame, global_frame, pointcloud_topic, boxes_topic, out_topic);
-    
-    // Spin
-    ros::spin ();
 }

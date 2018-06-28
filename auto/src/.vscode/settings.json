@@ -20,7 +20,18 @@
         "iosfwd": "cpp",
         "typeinfo": "cpp",
         "core": "cpp",
-        "initializer_list": "cpp"
+        "initializer_list": "cpp",
+        "numericaldiff": "cpp",
+        "csignal": "cpp",
+        "cwctype": "cpp",
+        "strstream": "cpp",
+        "chrono": "cpp",
+        "mutex": "cpp",
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "thread": "cpp",
+        "cinttypes": "cpp",
+        "typeindex": "cpp"
     },
     "python.linting.enabled": false
 }

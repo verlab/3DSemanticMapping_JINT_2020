@@ -30,11 +30,23 @@
     <param name="image_view/enable_opencv"            value="true" />
   </node>
 
-  <!-- Start object projector node -->
-  <!--
+<!-- -->
+<!-- -->
+<!-- -->
+<!-- 
+    <include file="$(find auto)/launch/obj_positioner.launch"> 
+    </include>
+ -->
+<!-- -->
+<!-- -->
+<!-- -->
+<!-- -->
+<!-- 
   <node pkg="auto" type="object_positioner" name="object_positioner_node" output="screen" launch-prefix="nice -n -15">
   </node>
-  -->
+   -->
+<!-- -->
+<!-- -->
   <!-- 
   <node pkg="auto" type="filter.py" name="kalman_filter" output="screen">
   </node>

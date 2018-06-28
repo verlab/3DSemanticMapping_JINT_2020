@@ -19,17 +19,16 @@
     <param name="ogain" value="3.0"/>
     <param name="lskip" value="0"/>
     <!--<param name="minimumScore" value="200"/>-->
-    <param name="minimumScore" value="250"/>
-    <param name="srr" value="0.01"/>
+    <param name="minimumScore" value="200"/>
+    <param name="srr" value="0.04"/>
     <param name="srt" value="0.02"/>
-    <param name="str" value="0.01"/>
-    <param name="stt" value="0.02"/>
-    <param name="linearUpdate" value="0.5"/>
+    <param name="str" value="0.07"/>
+    <param name="stt" value="0.2"/>
+    <param name="linearUpdate" value="1.0"/>
     <param name="angularUpdate" value="0.436"/>
-    <!--<param name="temporalUpdate" value="-1.0"/>-->
-    <param name="temporalUpdate" value="0.5"/>
+    <param name="temporalUpdate" value="-1.0"/>
     <param name="resampleThreshold" value="0.5"/>
-    <param name="particles" value="80"/>
+    <param name="particles" value="30"/>
   <!--
     <param name="xmin" value="-50.0"/>
     <param name="ymin" value="-50.0"/>
@@ -49,8 +48,6 @@
     <param name="lasamplestep" value="0.005"/>
     
     <param name="map_frame" value="map" />
-
-    <!--<remap from="map" to="openslam_map" />-->
     <remap from="scan" to="$(arg scan_topic)"/>
   </node>
 </launch>
