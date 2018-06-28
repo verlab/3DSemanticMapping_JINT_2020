@@ -43,6 +43,49 @@ def getMarker(x, y, angle, namespace, id, frame, size=0.4, R=1.0,G=0.0,B=0.0, li
 	marker.id = id
 
 	# Sphere
+	marker.type = Marker.CUBE
+	marker.action = Marker.ADD
+
+	# Size
+	marker.scale.x = 0.05
+	marker.scale.y = size
+	marker.scale.z = 2.0
+
+	# Position
+	q = tf.transformations.quaternion_from_euler(0, 0, angle)
+	marker.pose.position.x = x
+	marker.pose.position.y = y
+	marker.pose.position.z = marker.scale.z/2.0
+	marker.pose.orientation.x = q[0]
+	marker.pose.orientation.y = q[1]
+	marker.pose.orientation.z = q[2]
+	marker.pose.orientation.w = q[3]
+
+	# Color
+	marker.color.a = 1.0 
+	marker.color.r = R
+	marker.color.g = G
+	marker.color.b = B
+
+	# Lifetime
+	marker.lifetime = rospy.Duration(lifeTime)
+
+	return marker
+
+def getMarkerArrow(x, y, angle, namespace, id, frame, size=0.4, R=1.0,G=0.0,B=0.0, lifeTime=5.0):
+	marker = Marker()
+	marker.header.stamp = rospy.Time.now()		
+
+	# Frame (map)
+	marker.header.frame_id = frame
+
+	# Object type
+	marker.ns = namespace
+
+	# Marker identifier
+	marker.id = id
+
+	# Sphere
 	marker.type = Marker.ARROW
 	marker.action = Marker.ADD
 
@@ -86,7 +129,7 @@ def main(args):
 
 	marker_pub = rospy.Publisher(markers_topic, Marker, queue_size=10)
 
-	doors = FilteredInstances(1, 0.3, 0.3)
+	doors = FilteredInstances(1.1, 0.3, 20)
 
 	while not rospy.is_shutdown(): 
 		
@@ -99,11 +142,12 @@ def main(args):
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = doors.angles[i]
 			obj_filtered.prob = float(i)
-			if doors.observations[i] > 4.0:
+			if doors.observations[i] > 3.0:
 				obj_pub.publish(obj_filtered)
 
 			# Publish marker
-			marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.4, doors.colors[i][0]/255.0, doors.colors[i][1]/255.0, doors.colors[i][2]/255.0)
+			#marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.4, doors.colors[i][0]/255.0, doors.colors[i][1]/255.0, doors.colors[i][2]/255.0)
+			marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.8, 0.0, 1.0, 0.0)
 			marker_pub.publish(marker)
 
 

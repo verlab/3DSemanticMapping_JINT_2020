@@ -25,6 +25,17 @@ class FilteredInstances:
         self.processNoise = processNoise
         self.measNoise = measNoise
         
+    # for handling the cycle behaviour
+    def handle_angle_diff(self, angle):
+        angle = np.remainder(angle,2*np.pi)
+        if angle >= np.pi:
+            angle = -2*np.pi + angle
+        else:
+            if angle <= -np.pi:
+                angle = 2*np.pi + angle
+
+        return angle
+
     # meas is the measurement, a tuple (x,y,...) in either integer or float format
     def addMeasurement(self, meas):
         addNew = True
@@ -39,7 +50,11 @@ class FilteredInstances:
 
             if d < self.radius:
                 addNew = False
-
+                
+                print "\nclass no.: %d" % (i)
+                print "current angle: %f" % (self.angles[i])
+                print "meas angle: %f" % (meas[2])
+                
                 # Save measurement at object 
                 self.measurements[i].append((meas[0], meas[1]))
 
@@ -49,11 +64,16 @@ class FilteredInstances:
 
                 # Save last prediction of object in list
                 self.predictions[i] = (tp[0], tp[1])
-                self.angles[i] = self.angles[i]*0.8 + meas[2]*0.2
+                v = self.angles[i]
+                w = meas[2]
+                d = self.handle_angle_diff(v - w)
+                w = v - d
+                self.angles[i] = self.angles[i]*0.8 + w*0.2
 
                 self.observations[i] += 1.0
 
                 break
+
 
         # Add new instance        
         if addNew:
@@ -71,8 +91,8 @@ class FilteredInstances:
         instance.processNoiseCov = np.array([[1,0],[0,1]],np.float32) * self.processNoise
         instance.measurementNoiseCov = np.array([[1,0],[0,1]],np.float32) * self.measNoise
         instance.statePre = mp
-        instance.errorCovPre = np.array([[1,0],[0,1]],np.float32) * 3            
-
+        instance.errorCovPre = np.array([[1,0],[0,1]],np.float32) * 3          
+            
         self.instances.append(instance)
         self.predictions.append((meas[0], meas[1]))
         self.angles.append(meas[2])
