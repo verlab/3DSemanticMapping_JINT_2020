@@ -19,6 +19,11 @@ objects_raw_topic = 'objects_raw'
 robot_frame = 'base_link'
 map_frame = 'map'
 
+raw_size = 3
+path_size = 4
+line_length = 19.0
+line_thickness = 9
+
 class state_saver:
 
   def __init__(self, map_topic, objects_topic, objects_raw_topic, robot_frame, map_frame):
@@ -39,13 +44,15 @@ class state_saver:
     self.objects_raw_sub = rospy.Subscriber(objects_raw_topic, WorldObject, self.objects_raw_callback)
   
   def getMapArray(self):
-      for i in range(len(self.map.data)):
-          if self.map.data[i] == -1:
-            self.map.data[i] = 126
+      map_copy = list(self.map.data)
+      for i in range(len(map_copy)):
+          if map_copy[i] == -1:
+            map_copy[i] = 126
           else :
-            self.map.data[i] = int(255-(self.map.data[i]/100.0)*255)
+            map_copy[i] = int(255-(map_copy[i]/100.0)*255)
+            #map_copy[i] = int((map_copy[i]/100.0)*255)
               
-      return np.asarray(self.map.data).reshape((self.map.info.height, self.map.info.width)).astype(np.uint8)
+      return np.asarray(map_copy).reshape((self.map.info.height, self.map.info.width)).astype(np.uint8)
 
   def getCellPosFromWorldPos(self, world_x, world_y):
     offsetX = world_x - self.map.info.origin.position.x
@@ -139,17 +146,33 @@ class state_saver:
       x_meters, y_meters = self.robot_pos[i]
       x, y = self.getCellPosFromWorldPos(x_meters, y_meters)
       print 'marking robot at %d %d ' % (x, y)
-      cv2.circle(map_marked, (x,y), 2, (0,200,0), -1)
+      cv2.circle(map_marked, (x,y), path_size, (0,0,220), -1)
 
-    # Mark found objects
+    # Mark raw objects
     for i in range(len(self.objects_raw)):
       x_meters, y_meters = (self.objects_raw[i].x ,self.objects_raw[i].y) 
       if np.isnan(x_meters) or np.isnan(y_meters) :
         print "NaN value found\n" 
         continue
       x, y = self.getCellPosFromWorldPos(x_meters, y_meters)
-      print 'marking obj at %d %d ' % (x, y)      
-      cv2.circle(map_marked, (x,y), 1, (150,0,150), -1)
+      print 'marking raw obj at %d %d ' % (x, y)      
+      cv2.circle(map_marked, (x,y), raw_size, (150,0,150), -1)
+
+    # Mark filtered objects
+    print 'Making Objects: \n'
+    for i in range(len(self.objects)):
+      x_meters, y_meters = (self.objects[i].x ,self.objects[i].y) 
+      if np.isnan(x_meters) or np.isnan(y_meters) :
+        print "NaN value found\n" 
+        continue
+
+      x, y = self.getCellPosFromWorldPos(x_meters, y_meters)
+      a = self.objects[i].angle+1.57
+      #print 'marking obj at %d %d %f' % (x, y, a) 
+      print '%f %f' % (x_meters, y_meters)
+      offsetx = int(round(line_length*np.cos(a)))
+      offsety = int(round(line_length*np.sin(a)))
+      cv2.line(map_marked, (x-offsetx, y-offsety), (x+offsetx, y+offsety), (0,255,0), line_thickness)
 
     cv2.imwrite(im_name, map_image)
     cv2.imwrite(marked_name, map_marked)
