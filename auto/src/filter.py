@@ -20,6 +20,11 @@ objects_topic_raw = '/objects_raw'
 # TOPICS [out]
 objects_topic_filtered = '/objects_filtered'
 
+# FILTER 
+radius = 0.9
+process_cov = 0.3
+meas_cov = 5
+
 # Debug
 markers_topic = '/markers'
 
@@ -118,7 +123,7 @@ def getMarkerArrow(x, y, angle, namespace, id, frame, size=0.4, R=1.0,G=0.0,B=0.
 
 def main(args):
 
-	global objects_topic_raw, doors
+	global objects_topic_raw, doors, radius, process_cov, meas_cov 
 
 	# Initialize node
 	rospy.init_node('object_marker', anonymous=True)
@@ -129,7 +134,7 @@ def main(args):
 
 	marker_pub = rospy.Publisher(markers_topic, Marker, queue_size=10)
 
-	doors = FilteredInstances(1.1, 0.3, 20)
+	doors = FilteredInstances(radius, process_cov, meas_cov)
 
 	while not rospy.is_shutdown(): 
 		
@@ -142,13 +147,14 @@ def main(args):
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = doors.angles[i]
 			obj_filtered.prob = float(i)
-			if doors.observations[i] > 3.0:
+			
+			if doors.observations[i] > 1.0:
 				obj_pub.publish(obj_filtered)
 
-			# Publish marker
-			#marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.4, doors.colors[i][0]/255.0, doors.colors[i][1]/255.0, doors.colors[i][2]/255.0)
-			marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.8, 0.0, 1.0, 0.0)
-			marker_pub.publish(marker)
+				# Publish marker
+				#marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.4, doors.colors[i][0]/255.0, doors.colors[i][1]/255.0, doors.colors[i][2]/255.0)
+				marker = getMarker(obj_filtered.x, obj_filtered.y, obj_filtered.angle, 'door', i, 'map', 0.8, 0.0, 1.0, 0.0)
+				marker_pub.publish(marker)
 
 
 		rate.sleep()
