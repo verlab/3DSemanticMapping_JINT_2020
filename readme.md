@@ -1,6 +1,6 @@
 **Utilização Rápida**
 
-Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebot e CUDA, testar com:
+Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebot e CUDA, instalar pacotes usando:
 
 >source /opt/ros/kinetic/setup.bash
 
@@ -29,3 +29,18 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 (Verificar linha 23 do arquivo a versão do cuda para compilar ~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt)
 
 >catkin_make -DCMAKE_BUILD_TYPE=Release
+
+**Teste com dataset**
+
+Baixar dataset
+
+(go to dataset folder, download and unzip)
+wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
+
+Inicializar nós do robô
+>roslaunch auto initialize.launch
+
+Executar replay
+>./slam-replay.sh
+
+
