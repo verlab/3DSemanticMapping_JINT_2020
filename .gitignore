@@ -1,5 +1,4 @@
 *.pyc
-CMakeLists.txt
 *.json
 *.png
 taking_pictures/
