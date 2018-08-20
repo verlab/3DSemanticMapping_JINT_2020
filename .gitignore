@@ -1,6 +1,5 @@
 *.pyc
 CMakeLists.txt
-pcl_tutorial/
 *.json
-downsampling_publish/
 *.png
+taking_pictures/
