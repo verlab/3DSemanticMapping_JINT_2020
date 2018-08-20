@@ -35,7 +35,7 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 Baixar dataset
 
 (go to dataset folder, download and unzip)
-wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
+>wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
 
 Inicializar nós do robô
 >roslaunch auto initialize.launch
