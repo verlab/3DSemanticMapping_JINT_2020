@@ -1,0 +1,4 @@
+[submodule "darknet_ros"]
+	path = darknet_ros
+	url = https://github.com/dhiegomaga/darknet_ros.git
+	branch = master
