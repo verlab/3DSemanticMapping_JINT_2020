@@ -1,4 +1,4 @@
-Utilização Rápida 
+Utilização Rápida: Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebot e CUDA, testar com:
 
 >source /opt/ros/kinetic/setup.bash
 
