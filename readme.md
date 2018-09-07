@@ -44,3 +44,6 @@ Executar replay
 >./slam-replay.sh
 
 
+**PARA EVITAR ERROS**
+1. Se estiver usando a camera astra, editar a flag 'publish_tf' para 'false', no arquivo astra.launch
+
