@@ -41,7 +41,7 @@ Install ROS Kinetic, turtlebot packages, CUDA.
 
 ### Offline test, using recorded robot data streams (dataset)
 
-Download rosbag (dataset)
+Download rosbag (dataset):
 
 >mkdir _/path/to/dataset/folder_
 
@@ -49,21 +49,24 @@ Download rosbag (dataset)
 
 >wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
 
-Play rosbag
+Play rosbag:
 
 >cd dataset
+
 >./play
+
+initialize slam and yolo_detector nodes... 
 
 ### Online test, using physical robot
 
 _Requirements: Kobuki base/other turtlebot base, RGBD camera, laser scan (optional) (RGBD camera depth stream can be converted to laser scan, but usually has lower range and accuracy)._
 
+Start base: 
+
 >roslaunch auto initialize.launch
 
->roslaunch auto slam_nav.launch
-
->roslaunch auto yolo_detector.launch
+initialize slam and yolo_detector nodes... 
 
 **Notes**
-_Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to **false**. Only the rosbag play and robot description launch files should publish tf's._
+*Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to **false**. Only the rosbag play and robot description launch files should publish tf's.*
 
