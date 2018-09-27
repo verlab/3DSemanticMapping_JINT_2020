@@ -1,6 +1,10 @@
-**Utilização Rápida**
+# Usage
 
-Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebot e CUDA, instalar pacotes usando:
+## Configuration
+
+Install ROS Kinetic, turtlebot packages, CUDA. 
+
+## Configure ROS workspace (if not set already): 
 
 >source /opt/ros/kinetic/setup.bash
 
@@ -12,9 +16,14 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 
 >echo source ~/catkin_ws/devel/setup.bash >> ~/.bashrc
 
+## Clone repository to src/ folder
+
 >cd ~/catkin_ws/src
 
 >git clone --recurse-submodules https://www.verlab.dcc.ufmg.br/gitlab/dhiegomaga/turtlebot.git
+
+## Build packages in order
+__Check line 23 in file "~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt" to assert cuda compile version is compatible to [your graphics card version](https://developer.nvidia.com/cuda-gpus). __
 
 >cd ~/catkin_ws/
 
@@ -26,11 +35,11 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 
 >catkin_make --pkg custom_msgs
 
-(Verificar linha 23 do arquivo a versão do cuda para compilar ~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt)
-
 >catkin_make -DCMAKE_BUILD_TYPE=Release
 
-**Teste com dataset**
+## Testing
+
+# Offline experiments, using dataset
 
 Baixar dataset
 
