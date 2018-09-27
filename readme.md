@@ -1,10 +1,10 @@
-# Usage
+# Installation
 
-## Configuration
+### Environment
 
 Install ROS Kinetic, turtlebot packages, CUDA. 
 
-## Configure ROS workspace (if not set already): 
+### Configure ROS workspace (if not set already): 
 
 >source /opt/ros/kinetic/setup.bash
 
@@ -16,13 +16,13 @@ Install ROS Kinetic, turtlebot packages, CUDA.
 
 >echo source ~/catkin_ws/devel/setup.bash >> ~/.bashrc
 
-## Clone repository to src/ folder
+### Clone repository to src/ folder
 
 >cd ~/catkin_ws/src
 
 >git clone --recurse-submodules https://www.verlab.dcc.ufmg.br/gitlab/dhiegomaga/turtlebot.git
 
-## Build packages in order
+### Build packages in order
 *Check line 23 in file "~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt" to assert cuda compile version is compatible to [your graphics card version](https://developer.nvidia.com/cuda-gpus).*
 
 >cd ~/catkin_ws/
@@ -39,7 +39,7 @@ Install ROS Kinetic, turtlebot packages, CUDA.
 
 # Testing
 
-## Offline test, using recorded robot data streams (dataset)
+### Offline test, using recorded robot data streams (dataset)
 
 Download rosbag (dataset)
 
@@ -54,7 +54,7 @@ Play rosbag
 >cd dataset
 >./play
 
-## Online test, using physical robot
+### Online test, using physical robot
 
 _Requirements: Kobuki base/other turtlebot base, RGBD camera, laser scan (optional) (RGBD camera depth stream can be converted to laser scan, but usually has lower range and accuracy)._
 
