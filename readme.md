@@ -68,5 +68,5 @@ Start base:
 initialize slam and yolo_detector nodes... 
 
 **Notes**
-*Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to **false**. Only the rosbag play and robot description launch files should publish tf's.*
+*Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to* __false.__ *Only the rosbag play and robot description launch files should publish tf's.*
 
