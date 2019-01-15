@@ -20,4 +20,7 @@
 
 </node>
 
+<node pkg="auto" type="filter.py" name="filter" output="screen">
+</node>
+
 </launch>

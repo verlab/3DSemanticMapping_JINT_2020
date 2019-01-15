@@ -7,20 +7,15 @@
     <include file="$(find turtlebot_bringup)/launch/minimal.launch"> 
     </include>
 
-    <!-- Start camera laser node -->
-    <!--<include file="$(find auto)/launch/sensor/scan_camera.launch"> 
-    </include>-->
-
-    <!--<include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
-        <arg name="scan_topic" value="camera/scan"/>
-    </include> -->
-
     <include file="$(find astra_launch)/launch/astra.launch">
     </include>
 
-    <!-- start hokuyo laser node-->
-    <include file="$(find auto)/launch/sensor/scan_hokuyo.launch"> 
+    <!-- start laser node (ethernet or usb)
+    <include file="$(find auto)/launch/sensor/eth_laser.launch"> 
     </include>
 
+    <include file="$(find auto)/launch/sensor/usb_laser.launch"> 
+    </include>
+    --> 
 
 </launch>
