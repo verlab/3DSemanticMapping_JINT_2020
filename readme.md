@@ -14,7 +14,7 @@ Install ROS Kinetic, turtlebot packages, CUDA.
 
 >catkin_make
 
->echo source ~/catkin_ws/devel/setup.bash >> ~/.bashrc
+>echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
 
 ### Clone repository to src/ folder
 
@@ -53,9 +53,9 @@ Play rosbag:
 
 >cd dataset
 
->./play
+>./slam_replay
 
-initialize slam and yolo_detector nodes... 
+initialize yolo_detector nodes... 
 
 ### Online test, using physical robot
 
