@@ -1,6 +1,10 @@
-**Utilização Rápida**
+# Installation
 
-Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebot e CUDA, instalar pacotes usando:
+### Environment
+
+Install ROS Kinetic, turtlebot packages, CUDA. 
+
+### Configure ROS workspace (if not set already): 
 
 >source /opt/ros/kinetic/setup.bash
 
@@ -10,11 +14,16 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 
 >catkin_make
 
->echo source ~/catkin_ws/devel/setup.bash >> ~/.bashrc
+>echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+
+### Clone repository to src/ folder
 
 >cd ~/catkin_ws/src
 
 >git clone --recurse-submodules https://www.verlab.dcc.ufmg.br/gitlab/dhiegomaga/turtlebot.git
+
+### Build packages in order
+*Check line 23 in file "~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt" to assert cuda compile version is compatible to [your graphics card version](https://developer.nvidia.com/cuda-gpus).*
 
 >cd ~/catkin_ws/
 
@@ -26,21 +35,38 @@ Depois que a máquina estiver corretamente configurada com ROS Kinetic, Turtlebo
 
 >catkin_make --pkg custom_msgs
 
-(Verificar linha 23 do arquivo a versão do cuda para compilar ~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt)
-
 >catkin_make -DCMAKE_BUILD_TYPE=Release
 
-**Teste com dataset**
+# Testing
 
-Baixar dataset
+### Offline test, using recorded robot data streams (dataset)
 
-(go to dataset folder, download and unzip)
+Download rosbag (dataset):
+
+>mkdir _/path/to/dataset/folder_
+
+>cd _/path/to/dataset/folder_
+
 >wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
 
-Inicializar nós do robô
+Play rosbag:
+
+>cd dataset
+
+>./slam_replay
+
+initialize yolo_detector nodes... 
+
+### Online test, using physical robot
+
+_Requirements: Kobuki base/other turtlebot base, RGBD camera, laser scan (optional) (RGBD camera depth stream can be converted to laser scan, but usually has lower range and accuracy)._
+
+Start base: 
+
 >roslaunch auto initialize.launch
 
-Executar replay
->./slam-replay.sh
+initialize slam and yolo_detector nodes... 
 
+**Notes**
+*Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to* __false.__ *Only the rosbag play and robot description launch files should publish tf's.*
 
