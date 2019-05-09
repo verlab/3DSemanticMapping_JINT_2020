@@ -2,20 +2,38 @@
 
 <launch>
 
+    <!-- ROBOT -->
 
     <!-- start turtlebot-->
     <include file="$(find turtlebot_bringup)/launch/minimal.launch"> 
     </include>
 
-    <include file="$(find astra_launch)/launch/astra.launch">
+    <!-- CAMERA -->
+
+    <!-- 
+        <include file="$(find astra_launch)/launch/astra.launch">
+        </include>
+    -->
+
+    <include file="$(find kinect2_bridge)/launch/kinect2_bridge.launch"> 
     </include>
 
+
+    <node pkg="tf" type="static_transform_publisher" 
+        name="camera_tf_broadcaster" 
+        args="0 0 0.35 1.571 3.142 1.78 base_link kinect2_link 100" 
+    />
+
+
+    <!-- LASER -->
+
     <!-- start laser node (ethernet or usb)
-    <include file="$(find auto)/launch/sensor/eth_laser.launch"> 
-    </include>
+        <include file="$(find auto)/launch/sensor/eth_laser.launch"> 
+        </include>
+    --> 
 
     <include file="$(find auto)/launch/sensor/usb_laser.launch"> 
     </include>
-    --> 
+    
 
 </launch>
