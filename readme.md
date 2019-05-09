@@ -70,3 +70,10 @@ initialize slam and yolo_detector nodes...
 **Notes**
 *Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to* __false.__ *Only the rosbag play and robot description launch files should publish tf's.*
 
+### Offline Run Updated
+Note: catkin_ws is the PATH to the folder where you compiled the turtlebot project
+* (terminal 1) roscore
+* (terminal 2) cd catkin_ws/src/turtlebot/auto/launch; roslaunch yolo_detector.launch
+* (terminal 3) cd catkin_ws/src/turtlebot/auto/launch; roslaunch auto obj_positioner.launch
+* (terminal 4) cd PATH_TO_DATASET; ./slam-replay
+* (terminal 5) rviz // and then use the rviz GUI to open rviz config file "rviz_config.rviz" in catkin_ws/src/turtlebot for the vizualization
