@@ -14,6 +14,7 @@
 
 // WorldObject
 #include "custom_msgs/WorldObject.h"
+#include "custom_msgs/ObjectList.h"
 
 // Darknet
 #include <darknet_ros_msgs/BoundingBoxes.h>
@@ -83,6 +84,7 @@ class Projector
 
         // Publishers
         ros::Publisher obj_pub;
+        ros::Publisher obj_list_pub;
         ros::Publisher cloud_pub;
 
         // Debug variables

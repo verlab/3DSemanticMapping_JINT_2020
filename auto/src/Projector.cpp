@@ -24,6 +24,7 @@ Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, str
 
     // Initialize Publishers
     obj_pub = nh->advertise<custom_msgs::WorldObject>(out_topic, 1);
+    obj_list_pub = nh->advertise<custom_msgs::ObjectList>(out_topic+"/list", 1);
 
     // Initialize Debug variables
     vis_pub = nh->advertise<visualization_msgs::Marker>( "raw_marker", 0 );
@@ -241,6 +242,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     else
     {
         ROS_INFO_STREAM("\nUnimplemented");
+        obj.prob = -1.0;
     }
 
     return obj;
@@ -266,6 +268,9 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
     ROS_INFO_STREAM("\nReceived box "+std::to_string( count));
     int box_num = boxes_ptr->bounding_boxes.size();
 
+    custom_msgs::ObjectList objects_msg;
+    objects_msg.num = 0;
+
     for(int i = 0; i < box_num; i++)
     {
         // Object class
@@ -273,10 +278,14 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         custom_msgs::WorldObject object; 
 
         // Object boundaries
-        int xmin = boxes_ptr->bounding_boxes.at(i).xmin;
+        int max_width = cloud_buffer.width;
+        int xmin = boxes_ptr->bounding_boxes.at(i).xmin+40;
         int ymin = boxes_ptr->bounding_boxes.at(i).ymin;
-        int xmax = boxes_ptr->bounding_boxes.at(i).xmax;
+        int xmax = boxes_ptr->bounding_boxes.at(i).xmax+40;
         int ymax = boxes_ptr->bounding_boxes.at(i).ymax;
+
+        if(xmin > max_width) xmin = max_width-1;
+        if(xmax > max_width) xmax = max_width-1;
 
         // Crop pointcloud inside bounding box
         pcl::PointCloud<pcl::PointXYZ> cropped; 
@@ -293,6 +302,8 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         {
             // Process data in core function to generate a world object
             object = process_cloud(class_name, cropped, xmin, xmax, ymin, ymax);
+            
+            if(object.prob < 0) continue; 
 
             // Verify object is not too far away 
             float d = distanceFromRobot(object.x, object.y);
@@ -301,12 +312,14 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
               // Publish encountered object
               too_far = false;              
               obj_pub.publish(object);
+              objects_msg.objects.push_back(object);
+              objects_msg.num += 1;
               ROS_INFO_STREAM("\nProcessed box "+std::to_string( count));
             }
             else
             {
               too_far = true;
-              ROS_INFO_STREAM("\nToo faar away!");
+              ROS_INFO_STREAM("\nToo faar away! Distance: "+std::to_string(d) + " > "+ std::to_string(max_proj_dist));
             }
         }
         else
@@ -314,6 +327,8 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
             ROS_INFO_STREAM("\nBlocked Projection!!");
         }
     }
+
+    obj_list_pub.publish(objects_msg);
 }
 
 float Projector::distanceFromRobot(float x, float y)
@@ -322,7 +337,6 @@ float Projector::distanceFromRobot(float x, float y)
   float dx = (trans_robot.getX() - x);
   float dy = (trans_robot.getY() - y);
   float dist = sqrt(pow(dx, 2.0) + pow(dy, 2.0));
-  ROS_INFO_STREAM("\n dist: " + std::to_string(dist));
   return dist; 
 }
 

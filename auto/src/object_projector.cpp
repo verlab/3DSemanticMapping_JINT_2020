@@ -25,20 +25,19 @@ int main (int argc, char** argv)
 
     // OTHER 
     // Astra camera
-    float fx = 527.135883f;
-    float fy = 527.76315129f;
-    float cx = 306.5405905;
-    float cy = 222.41208797f;
+    double camera_fx = 527.135883f;
+    double camera_fy = 527.76315129f;
+    double camera_cx = 306.5405905;
+    double camera_cy = 222.41208797f;
 
     // Kinect V2
-    //float camera_fx = 1074.01f/2.0f;
-    //float camera_fy = 1073.9f/2.0f;
-    //float camera_cx = 945.3f/2.0f;
-    //float camera_cy = 537.4f/2.0f;
+    //double camera_fx = 1074.01f/2.0f;
+    //double camera_fy = 1073.9f/2.0f;
+    //double camera_cx = 945.3f/2.0f;
+    //double camera_cy = 537.4f/2.0f;
 
-    float camera_cx, camera_cy, camera_fx, camera_fy; 
-    bool use_mean, rotation_optmization; 
-    float max_proj_dist;
+    bool use_mean = false, rotation_optmization = true; 
+    double max_proj_dist = 6.0;
 
     // Get params
     ros::param::param<string>("pointcloud_topic", pointcloud_topic, "camera/depth_registered/points");    
@@ -49,13 +48,14 @@ int main (int argc, char** argv)
     ros::param::param<string>("camera_frame", camera_frame, "camera_rgb_optical_frame");
     ros::param::param<string>("robot_frame", robot_frame, "base_link");
     ros::param::param<string>("global_frame", global_frame, "map");
-    ros::param::param("camera_cx", camera_cx, cx);
-    ros::param::param("camera_cy", camera_cy, cy);
-    ros::param::param("camera_fx", camera_fx, fx);
-    ros::param::param("camera_fy", camera_fy, fy);
-    ros::param::param("rotation_optmization", rotation_optmization, true);
-    ros::param::param("use_mean", use_mean, false);
-    ros::param::param("max_proj_distance", max_proj_dist, 6.0f);
+
+    ros::param::get("camera_cx", camera_cx);
+    ros::param::get("camera_cy", camera_cy);
+    ros::param::get("camera_fx", camera_fx);
+    ros::param::get("camera_fy", camera_fy);
+    ros::param::get("rotation_optmization", rotation_optmization);
+    ros::param::get("use_mean", use_mean);
+    ros::param::get("max_proj_distance", max_proj_dist);
 
     // Initialize and set params
     Projector projector(nh, pointcloud_topic, boxes_topic, odom_topic, detection_flag_topic,out_topic);
