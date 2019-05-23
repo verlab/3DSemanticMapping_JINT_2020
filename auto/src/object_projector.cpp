@@ -10,7 +10,7 @@ int main (int argc, char** argv)
 
     // Initialize ROS
     ros::init (argc, argv, node_name);
-    ros::NodeHandle * nh = new ros::NodeHandle;
+    ros::NodeHandle * nh = new ros::NodeHandle("~");
 
     // Parameter variables
 
@@ -37,25 +37,30 @@ int main (int argc, char** argv)
     //double camera_cy = 537.4f/2.0f;
 
     bool use_mean = false, rotation_optmization = true; 
-    double max_proj_dist = 6.0;
+    double max_proj_dist;
 
     // Get params
-    ros::param::param<string>("pointcloud_topic", pointcloud_topic, "camera/depth_registered/points");    
-    ros::param::param<string>("boxes_topic", boxes_topic, "darknet_ros/bounding_boxes");  
-    ros::param::param<string>("detection_flag_topic", detection_flag_topic, "darknet_ros/flag_detection");
-    ros::param::param<string>("odom_topic", odom_topic, "odom");
-    ros::param::param<string>("out_topic", out_topic, "objects_raw");
-    ros::param::param<string>("camera_frame", camera_frame, "camera_rgb_optical_frame");
-    ros::param::param<string>("robot_frame", robot_frame, "base_link");
-    ros::param::param<string>("global_frame", global_frame, "map");
 
-    ros::param::get("camera_cx", camera_cx);
-    ros::param::get("camera_cy", camera_cy);
-    ros::param::get("camera_fx", camera_fx);
-    ros::param::get("camera_fy", camera_fy);
-    ros::param::get("rotation_optmization", rotation_optmization);
-    ros::param::get("use_mean", use_mean);
-    ros::param::get("max_proj_distance", max_proj_dist);
+    nh->param("pointcloud_topic", pointcloud_topic, string("/camera/depth_registered/points"));    
+    nh->param("boxes_topic", boxes_topic, string("/darknet_ros/bounding_boxes"));  
+    nh->param("detection_flag_topic", detection_flag_topic, string("/darknet_ros/flag_detection"));
+    nh->param("odom_topic", odom_topic, string("/odom"));
+    nh->param("out_topic", out_topic, string("/objects_raw"));
+    nh->param("camera_frame", camera_frame, string("/camera_rgb_optical_frame"));
+    nh->param("robot_frame", robot_frame, string("/base_link"));
+    nh->param("global_frame", global_frame, string("/map"));
+    
+    nh->param("camera_cx", camera_cx, 306.540);
+    nh->param("camera_cy", camera_cy, 222.412);
+    nh->param("camera_fx", camera_fx, 527.135);
+    nh->param("camera_fy", camera_fy, 527.763);
+
+    nh->param("rotation_optmization", rotation_optmization, true);
+    nh->param("use_mean", use_mean, false);
+    nh->param("max_proj_distance", max_proj_dist, 7.0);
+
+    ROS_INFO_STREAM("\n camera_frame: "+ camera_frame );
+    ROS_INFO_STREAM("\n max_proj_dist: "+ std::to_string( max_proj_dist ));
 
     // Initialize and set params
     Projector projector(nh, pointcloud_topic, boxes_topic, odom_topic, detection_flag_topic,out_topic);

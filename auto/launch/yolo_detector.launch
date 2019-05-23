@@ -20,9 +20,6 @@
 
   <!-- Load parameters -->
   <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/ros.yaml"/>
-  <!--
-  <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/yolo-door.yaml"/>
-  -->
   <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/yolo-custom7.yaml"/>
 
   <!-- Start darknet and ros wrapper -->
