@@ -59,9 +59,6 @@ int main (int argc, char** argv)
     nh->param("use_mean", use_mean, false);
     nh->param("max_proj_distance", max_proj_dist, 7.0);
 
-    ROS_INFO_STREAM("\n camera_frame: "+ camera_frame );
-    ROS_INFO_STREAM("\n max_proj_dist: "+ std::to_string( max_proj_dist ));
-
     // Initialize and set params
     Projector projector(nh, pointcloud_topic, boxes_topic, odom_topic, detection_flag_topic,out_topic);
     projector.camera_frame = camera_frame;
@@ -74,6 +71,9 @@ int main (int argc, char** argv)
     projector.rotation_optmization = rotation_optmization; 
     projector.use_mean = use_mean;
     projector.max_proj_dist = max_proj_dist;
+
+    ROS_INFO_STREAM("\n camera_frame: "+ camera_frame );
+    ROS_INFO_STREAM("\n max_proj_dist: "+ std::to_string( max_proj_dist ));
 
     // Spin
     ros::spin ();

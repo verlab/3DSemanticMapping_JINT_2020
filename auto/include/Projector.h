@@ -32,13 +32,15 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 
+#define point_type pcl::PointXYZRGB
+
 using std::string; 
 
 class Projector
 {
     public:
         Projector(ros::NodeHandle * node_handle, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic);
-        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<pcl::PointXYZ> obj_cloud, int xmin, int xmax, int ymin, int ymax);
+        custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<point_type> obj_cloud, int xmin, int xmax, int ymin, int ymax);
         pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
 
         /**
@@ -64,12 +66,13 @@ class Projector
 
         // If set, does not use camera projection to find object position; instead, it uses the centroid of the associated pointcloud
         bool use_mean; 
+        bool showClassName; 
 
     private:
 
         tf::TransformListener * listener;
         ros::NodeHandle * nh;
-        pcl::PointCloud<pcl::PointXYZ> cloud_buffer;
+        pcl::PointCloud<point_type> cloud_buffer;
         tf::StampedTransform transform, transform_buffer, robot_transform;
         bool block_projection; 
         float last_rotation;
@@ -93,7 +96,9 @@ class Projector
 
         // Methods 
         void markArrow(pcl::PointXYZ start, pcl::PointXYZ end, std::string frame, int id, double r, double g, double b);
+        void markObject(const pcl::PointXYZ & location, const std::string & className, const std::string & frame, const std::string & shape, int id, double sx, double sy, double sz, double r, double g, double b);
         float distanceFromRobot(float x, float y);
+        pcl::PointXYZ convertToMapFrame(const pcl::PointXYZ & point);
 
         // Callbacks
         void boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr & boxes_ptr);
