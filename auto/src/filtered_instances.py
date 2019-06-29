@@ -36,6 +36,14 @@ class FilteredInstances:
 
         return angle
 
+    # add measurement list, for the case when more than one object is seen in the same frame
+    def addMeasurementList(self, meas_list):
+        if len(meas_list) == 0: 
+            return 
+    
+        for m in meas_list:
+            self.addMeasurement(m)
+
     # meas is the measurement, a tuple (x,y,...) in either integer or float format
     def addMeasurement(self, meas):
         addNew = True
