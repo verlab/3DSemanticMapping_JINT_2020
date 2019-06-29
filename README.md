@@ -24,16 +24,12 @@ Install ROS Kinetic, turtlebot packages, CUDA.
 
 >cd ~/catkin_ws/src
 
->git clone --recurse-submodules https://www.verlab.dcc.ufmg.br/gitlab/dhiegomaga/turtlebot.git
+>git clone --recurse-submodules https://github.com/verlab/2019-JINT-robotSemanticMapping-code.git
 
 ### Build packages in order
 *Check line 23 in file "~/catkin_ws/src/darknet_ros/darknet_ros/CMakeLists.txt" to assert cuda compile version is compatible to [your graphics card version](https://developer.nvidia.com/cuda-gpus).*
 
 >cd ~/catkin_ws/
-
->catkin_make --pkg driver_common
-
->catkin_make --pkg driver_base
 
 >catkin_make --pkg darknet_ros_msgs
 
@@ -53,13 +49,35 @@ Download rosbag (dataset):
 
 >wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
 
-Play rosbag:
+### Start Test
 
->cd dataset
+- Terminal 1: 
 
->./slam_replay
+> roscore
 
-initialize yolo_detector nodes... 
+- Terminal 2: 
+
+> rviz
+
+_(Set configuration: File > Open Config, select rtab_mapping/rvizconfig.rviz)_
+
+- Terminal 3:
+
+> cd dataset
+
+>./run_all.sh
+
+- Terminal 4:  
+
+> roscd auto/launch
+
+> roslaunch yolo_detector.launch
+
+- Terminal 5:  
+
+> roscd auto/launch
+
+> roslaunch obj_positioner.launch
 
 ### Online test, using physical robot
 
@@ -73,11 +91,3 @@ initialize slam and yolo_detector nodes...
 
 **Notes**
 *Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to* __false.__ *Only the rosbag play and robot description launch files should publish tf's.*
-
-### Offline Run Updated
-Note: catkin_ws is the PATH to the folder where you compiled the turtlebot project
-* (terminal 1) roscore
-* (terminal 2) cd catkin_ws/src/turtlebot/auto/launch; roslaunch yolo_detector.launch
-* (terminal 3) cd catkin_ws/src/turtlebot/auto/launch; roslaunch auto obj_positioner.launch
-* (terminal 4) cd PATH_TO_DATASET; ./slam-replay
-* (terminal 5) rviz // and then use the rviz GUI to open rviz config file "rviz_config.rviz" in catkin_ws/src/turtlebot for the vizualization
