@@ -27,7 +27,7 @@
     <param name="camera_cy" type="double" value="268.7"  />
     <param name="camera_fx" type="double" value="537.005"/>
     <param name="camera_fy" type="double" value="536.95" />
-    <param name="max_proj_distance" type="double" value="12.0" />
+    <param name="max_proj_distance" type="double" value="6.0" />
 </node>
 
 <node pkg="auto" type="filter.py" name="filter" output="screen">
