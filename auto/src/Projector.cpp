@@ -969,7 +969,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
             else if (obj.objClass == "person")
             {
                 position.z = 1.1;
-                markObject(position, obj.objClass, global_frame, "cylinder", i+100, 0.3, 0.3, 1.6, 0.9, 0.5, 0.1);
+                markObject(position, obj.objClass, global_frame, "cylinder", i+100, 0.4, 0.4, 1.6, 0.9, 0.5, 0.1);
             }
         }
         

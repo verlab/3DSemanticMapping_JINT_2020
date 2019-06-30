@@ -23,7 +23,7 @@ graph_list = '/rtabmap/mapGraph'
 objects_topic_filtered = '/objects_filtered'
 
 # Perform graph node update 
-doGraphUpdate = True
+doGraphUpdate = False
 
 # FILTER 
 process_cov = 0.3
@@ -37,11 +37,11 @@ fires = None
 waters = None
 
 # Association threshold 
-door_radius = 0.9
-bench_radius = 2.2
-trash_radius = 1.7
-fire_radius = 1.1
-water_radius = 0.9
+door_radius = 2
+bench_radius = 4
+trash_radius = 3.4
+fire_radius = 2.2
+water_radius = 2.5
 
 # Debug
 markers_topic = '/markers'
@@ -82,7 +82,7 @@ def graph_list_callback(graph_list):
 	fires.updateGraphList(graph_list.poses, graph_list.posesId)
 	waters.updateGraphList(graph_list.poses, graph_list.posesId)
 
-def getTextMarker(x, y, height, namespace, id, frame, size, R, G, B, lifeTime):
+def getTextMarker(label, x, y, height, namespace, id, frame, size, R, G, B, lifeTime):
 	marker = Marker()
 	marker.header.stamp = rospy.Time.now()		
 
@@ -90,12 +90,12 @@ def getTextMarker(x, y, height, namespace, id, frame, size, R, G, B, lifeTime):
 	marker.header.frame_id = frame
 
 	# Object type
-	marker.ns = namespace+"_text"
+	marker.ns = namespace+"_label"
 
 	# Marker identifier
 	marker.id = id
 
-	marker.text = namespace
+	marker.text = label
 
 	# Text
 	marker.type = Marker.TEXT_VIEW_FACING
@@ -233,6 +233,8 @@ def main(args):
 
 	while not rospy.is_shutdown(): 
 		
+		life_time = 0
+
 		# Publish doors
 		for i in range(len(doors.instances)):
 			pred = doors.predictions[i]
@@ -255,13 +257,12 @@ def main(args):
 				R = 0.0
 				G = 1.0 
 				B = 0.0
-				life_time = 5.0
 
 				# Publish marker
 				marker = getMarker(obj_filtered.x, obj_filtered.y, height, obj_filtered.angle, class_name, i, frame, size_x, size_y, size_z, R, G, B, life_time)
 				marker_pub.publish(marker)
 
-				text = getTextMarker(obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
+				text = getTextMarker(class_name, obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
 
 		# Publish benches
@@ -286,13 +287,12 @@ def main(args):
 				R = 0.0
 				G = 0.1 
 				B = 0.8
-				life_time = 5.0
 
 				# Publish marker
 				marker = getMarker(obj_filtered.x, obj_filtered.y, height, obj_filtered.angle, class_name, i, frame, size_x, size_y, size_z, R, G, B, life_time)
 				marker_pub.publish(marker)
 
-				text = getTextMarker(obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
+				text = getTextMarker(class_name, obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
 
 		# Publish trashes
@@ -317,13 +317,12 @@ def main(args):
 				R = 0.8
 				G = 0.7 
 				B = 0.1
-				life_time = 5.0
 
 				# Publish marker
 				marker = getMarker(obj_filtered.x, obj_filtered.y, height, obj_filtered.angle, class_name, i, frame, size_x, size_y, size_z, R, G, B, life_time)
 				marker_pub.publish(marker)
 
-				text = getTextMarker(obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
+				text = getTextMarker('trash bin', obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
 
 		# Publish fires
@@ -348,13 +347,12 @@ def main(args):
 				R = 1.0
 				G = 0.1
 				B = 0.1
-				life_time = 5.0
 
 				# Publish marker
 				marker = getMarker(obj_filtered.x, obj_filtered.y, height, obj_filtered.angle, class_name, i, frame, size_x, size_y, size_z, R, G, B, life_time)
 				marker_pub.publish(marker)
 
-				text = getTextMarker(obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
+				text = getTextMarker('fire extinguisher', obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
 
 		# Publish waters
@@ -379,13 +377,13 @@ def main(args):
 				R = 0.4
 				G = 0.8 
 				B = 1.0
-				life_time = 5.0
+				
 
 				# Publish marker
 				marker = getMarker(obj_filtered.x, obj_filtered.y, height, obj_filtered.angle, class_name, i, frame, size_x, size_y, size_z, R, G, B, life_time)
 				marker_pub.publish(marker)
 
-				text = getTextMarker(obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
+				text = getTextMarker('water fountain', obj_filtered.x, obj_filtered.y, height+size_z, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
 
 		rate.sleep()

@@ -1,4 +1,5 @@
 import cv2, numpy as np
+from scipy.optimize import linear_sum_assignment
 import math
 from random import randint
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -22,6 +23,7 @@ class FilteredInstances:
         # Observations of each instance
         self.observations = []        
 
+        # Radius, process noise, etc. 
         self.radius = radius
         self.processNoise = processNoise
         self.measNoise = measNoise
@@ -68,6 +70,7 @@ class FilteredInstances:
                 (row, pitch, yaw_curr) = euler_from_quaternion([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
 
                 dr = (yaw_curr - yaw_old)
+                dr=0
                 dx = (pose.position.x - old_pose.position.x)
                 dy = (pose.position.y - old_pose.position.y)
 
@@ -83,9 +86,8 @@ class FilteredInstances:
             instance_pose_id = self.instancesNodeId[i]
             if instance_pose_id in transform_matrices:
                 transform_matrix = transform_matrices[instance_pose_id]
-                x = self.instances[i].statePre[0,0]
-                y = self.instances[i].statePre[1,0]
-                position = np.array([[x],[y],[1]])
+                x, y=self.predictions[i]
+                position = np.array([[x],[y],[1]], dtype=np.float32)
                 position_new = np.matmul(transform_matrix, position)
                 x_new = position_new[0,0]
                 y_new = position_new[1,0]
@@ -97,13 +99,73 @@ class FilteredInstances:
                 tp = self.instances[i].predict()
                 self.predictions[i] = (tp[0], tp[1])
 
+    def getErrorMatrix(self, meas_list):
+        M = np.zeros((len(meas_list), len(self.predictions)), dtype=np.float32)
+        for i in range(len(self.predictions)):
+            x, y = self.predictions[i]
+            for j in range(len(meas_list)):
+                x_meas = np.float32(meas_list[j][0])
+                y_meas = np.float32(meas_list[j][1])
+
+                distance = np.sqrt((x_meas - x)**2 + (y_meas - y)**2)
+                M[j, i] = distance
+        
+        return M
+
     # add measurement list, for the case when more than one object is seen in the same frame
     def addMeasurementList(self, meas_list):
         if len(meas_list) == 0: 
             return 
-    
-        for m in meas_list:
-            self.addMeasurement(m)
+        print '\n'
+        
+        # Find association cost
+        cost = self.getErrorMatrix(meas_list)
+        print str(cost)
+
+        row_ind, col_ind = linear_sum_assignment(cost)
+        meas_indices = range(len(meas_list)) 
+        unmatched_indices = [x for x in meas_indices if x not in row_ind]
+
+        # update objects whose associated measurement lies within distance threshold
+        for i in range(len(row_ind)):
+            instance_index = col_ind[i]
+            meas_index = row_ind[i]
+
+            # Find distance
+            meas = meas_list[meas_index]
+            x = self.predictions[instance_index][0]
+            y = self.predictions[instance_index][1]
+            distance = math.sqrt(pow(x-meas[0],2) + pow(y-meas[1], 2))
+
+            # if distance is small, add it as a measurement
+            if distance < self.radius:
+                # Save measurement at object 
+                self.measurements[instance_index].append((meas[0], meas[1]))
+
+                # Kalman correct and predict
+                mp = np.array([ [np.float32(meas[0])],[np.float32(meas[1])] ])
+                self.instances[instance_index].correct(mp)
+                tp = self.instances[instance_index].predict()
+
+                # Save last prediction of object in list
+                self.predictions[instance_index] = (tp[0], tp[1])
+                v = self.angles[instance_index]
+                w = meas[2]
+                d = self.handle_angle_diff(v - w)
+                w = v - d
+                persistence = 0.9
+                self.angles[instance_index] = self.angles[instance_index]*persistence + w*(1-persistence)
+                self.observations[instance_index] += 1.0
+
+            # Add as instance later
+            else:
+                unmatched_indices.append(meas_index)
+
+        # Add all unmatched indices
+        print 'unmatched objs: '+str(len(unmatched_indices))
+        for index in unmatched_indices:
+            meas = meas_list[index]
+            self.addNewInstance(meas)
 
     # meas is the measurement, a tuple (x,y,...) in either integer or float format
     def addMeasurement(self, meas):
@@ -133,7 +195,7 @@ class FilteredInstances:
                 w = meas[2]
                 d = self.handle_angle_diff(v - w)
                 w = v - d
-                self.angles[i] = self.angles[i]*0.8 + w*0.2
+                self.angles[i] = self.angles[i]*0.95 + w*0.05
 
                 self.observations[i] += 1.0
 
