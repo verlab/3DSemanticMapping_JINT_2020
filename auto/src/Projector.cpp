@@ -27,6 +27,7 @@ Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, str
     max_proj_dist = 5.0;
     too_far = true;
     showClassName = true;
+    quiet_mode = true;
 
     // Initialize Subscribers
     cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
@@ -93,9 +94,6 @@ void Projector::odom_callback(const nav_msgs::Odometry & odom)
         else block_projection = false;
     }
 
-    //if(block_projection) ROS_INFO_STREAM("\nX");
-    //else ROS_INFO_STREAM("\nAllow");
-
     last_rotation = rotation;
 }
 
@@ -128,7 +126,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         // Mandatory
         seg.setModelType (pcl::SACMODEL_PLANE);
         seg.setMethodType (pcl::SAC_RANSAC);
-        seg.setDistanceThreshold (0.03);
+        seg.setDistanceThreshold (0.1);
         seg.setInputCloud (obj_cloud.makeShared());
         seg.segment (inliers, coefficients); 
         if(publish_inliers)
@@ -143,7 +141,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             }
         }
 
-        //ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
+        //if(!quiet_mode) ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
         pcl::PointXYZ obj_position;
 
         // 1. Calculates object location in camera_frame:         
@@ -290,6 +288,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             seg.setDistanceThreshold (0.02);
             
             int nr_points = (int) cloud_filtered->points.size ();
+            /*
             while (cloud_filtered->points.size () > 0.95 * nr_points)
             {
                 // Segment the largest planar component from the remaining cloud
@@ -315,7 +314,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 extract.filter (*cloud_f);
                 *cloud_filtered = *cloud_f;
             }
-            
+            */
             // Remove NaNs
             cloud_filtered->is_dense = false;
             std::vector< int > a; 
@@ -340,7 +339,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 ec.setSearchMethod (tree);
                 ec.setInputCloud (cloud_filtered);
                 ec.extract (cluster_indices);
-                ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
+                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
                 int biggest_cluster_size = 0; 
                 int biggest_cluster_index = 0;
@@ -426,7 +425,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 ec.setSearchMethod (tree);
                 ec.setInputCloud (cloud_filtered);
                 ec.extract (cluster_indices);
-                ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
+                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
                 int biggest_cluster_size = 0; 
                 int biggest_cluster_index = 0;
@@ -486,7 +485,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.prob = 1;
         pcl::PointXYZ position; 
         int minimum_cluster_size = 4;
-        int method = 1; 
+        int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
         if(method == 0)
@@ -541,6 +540,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             seg.setDistanceThreshold (0.02);
             
             int nr_points = (int) cloud_filtered->points.size ();
+
+            /*
             while (cloud_filtered->points.size () > 0.98 * nr_points)
             {
                 // Segment the largest planar component from the remaining cloud
@@ -566,7 +567,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 extract.filter (*cloud_f);
                 *cloud_filtered = *cloud_f;
             }
-            
+            */
             // Remove NaNs
             cloud_filtered->is_dense = false;
             std::vector< int > a; 
@@ -591,7 +592,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 ec.setSearchMethod (tree);
                 ec.setInputCloud (cloud_filtered);
                 ec.extract (cluster_indices);
-                ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
+                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
                 int biggest_cluster_size = 0; 
                 int biggest_cluster_index = 0;
@@ -677,7 +678,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 ec.setSearchMethod (tree);
                 ec.setInputCloud (cloud_filtered);
                 ec.extract (cluster_indices);
-                ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
+                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
                 int biggest_cluster_size = 0; 
                 int biggest_cluster_index = 0;
@@ -773,7 +774,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             ec.setSearchMethod (tree);
             ec.setInputCloud (cloud_filtered);
             ec.extract (cluster_indices);
-            ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
+            if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
             int biggest_cluster_size = 0; 
             int biggest_cluster_index = 0;
@@ -843,7 +844,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
     else
     {
-        ROS_INFO_STREAM("\nUnimplemented");
+        if(!quiet_mode) ROS_INFO_STREAM("\nUnimplemented");
         obj.prob = -1.0;
     }
 
@@ -854,7 +855,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
 {
     count++; 
     transform = transform_buffer;
-    ROS_INFO_STREAM("\nProcessing "+std::to_string(count)+ " objects. ");
+    if(!quiet_mode) ROS_INFO_STREAM("\nProcessing "+std::to_string(count)+ " objects. ");
     int box_num = boxes_ptr->bounding_boxes.size();
 
     custom_msgs::ObjectList objects_msg;
@@ -864,7 +865,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
     for(int i = 0; i < box_num; i++)
     {
         if(boxes_ptr->bounding_boxes.at(i).Class != "door")
-            ROS_INFO_STREAM("\n\nProcessing " + boxes_ptr->bounding_boxes.at(i).Class + ": ");
+            if(!quiet_mode) ROS_INFO_STREAM("\n\nProcessing " + boxes_ptr->bounding_boxes.at(i).Class + ": ");
 
         // Object class
         std::string class_name = boxes_ptr->bounding_boxes.at(i).Class;
@@ -897,7 +898,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
             
             // Could not process object
             if(object.prob < 0) {
-                ROS_INFO_STREAM("Could not process "+ class_name);
+                if(!quiet_mode) ROS_INFO_STREAM("Could not process "+ class_name);
                 continue; 
             }
 
@@ -912,18 +913,18 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
               objects_msg.num += 1;
 
               if(boxes_ptr->bounding_boxes.at(i).Class != "door")
-                ROS_INFO_STREAM("\n"+ object.objClass + " successful!");
+                if(!quiet_mode) ROS_INFO_STREAM("\n"+ object.objClass + " successful!");
             }
             else
             {
               too_far = true;
-              ROS_INFO_STREAM("\n" + object.objClass + " too faar away!\nDistance: "+std::to_string(d) + " > "+ std::to_string(max_proj_dist));
+              if(!quiet_mode) ROS_INFO_STREAM("\n" + object.objClass + " too faar away!\nDistance: "+std::to_string(d) + " > "+ std::to_string(max_proj_dist));
             }
         }
         else
         {
             if(boxes_ptr->bounding_boxes.at(i).Class != "door")
-                ROS_INFO_STREAM("\nBlocked Projection! (Robot rotating too fast...)");
+                if(!quiet_mode) ROS_INFO_STREAM("\nBlocked Projection! (Robot rotating too fast...)");
         }
     }
 
@@ -974,7 +975,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
         
     }
 
-    ROS_INFO_STREAM("\n------------------------\n"); 
+    if(!quiet_mode) ROS_INFO_STREAM("\n------------------------\n"); 
 }
 
 float Projector::distanceFromRobot(float x, float y)

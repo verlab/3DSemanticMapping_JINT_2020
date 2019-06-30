@@ -9,9 +9,10 @@ import numpy as np
 import struct
 import copy
 from visualization_msgs.msg import Marker
-
 from custom_msgs.msg import WorldObject
 from custom_msgs.msg import ObjectList
+from rtabmap_ros.msg import MapGraph
+
 from filtered_instances import FilteredInstances
 
 # TOPICS [in]
@@ -20,6 +21,9 @@ graph_list = '/rtabmap/mapGraph'
 
 # TOPICS [out]
 objects_topic_filtered = '/objects_filtered'
+
+# Perform graph node update 
+doGraphUpdate = True
 
 # FILTER 
 process_cov = 0.3
@@ -69,6 +73,14 @@ def object_list_callback(object_list):
 	trashes.addMeasurementList(trash_list)
 	fires.addMeasurementList(fire_list)
 	waters.addMeasurementList(water_list)
+
+def graph_list_callback(graph_list):
+	global doors, benches, trashes, fires, waters 
+	doors.updateGraphList(graph_list.poses, graph_list.posesId)
+	benches.updateGraphList(graph_list.poses, graph_list.posesId)
+	trashes.updateGraphList(graph_list.poses, graph_list.posesId)
+	fires.updateGraphList(graph_list.poses, graph_list.posesId)
+	waters.updateGraphList(graph_list.poses, graph_list.posesId)
 
 def getTextMarker(x, y, height, namespace, id, frame, size, R, G, B, lifeTime):
 	marker = Marker()
@@ -197,7 +209,7 @@ def getMarkerArrow(x, y, angle, namespace, id, frame, size=0.4, R=1.0,G=0.0,B=0.
 
 def main(args):
 	
-	global object_list_topic_raw, object_list_topic_raw, process_cov, meas_cov 
+	global object_list_topic_raw, object_list_topic_raw, process_cov, meas_cov, doGraphUpdate
 	global doors, benches, trashes, fires, waters 
 	global door_radius, bench_radius, trash_radius, fire_radius, water_radius
 
@@ -206,6 +218,8 @@ def main(args):
 	rate = rospy.Rate(5) 
 
 	rospy.Subscriber(object_list_topic_raw, ObjectList, object_list_callback)
+	if doGraphUpdate:
+		rospy.Subscriber(graph_list, MapGraph, graph_list_callback)
 
 	obj_pub = rospy.Publisher(objects_topic_filtered, WorldObject, queue_size=10)
 	marker_pub = rospy.Publisher(markers_topic, Marker, queue_size=10)
@@ -254,7 +268,7 @@ def main(args):
 		for i in range(len(benches.instances)):
 			pred = benches.predictions[i]
 			obj_filtered = WorldObject()
-			obj_filtered.objClass = 'door'
+			obj_filtered.objClass = 'bench'
 			obj_filtered.x = pred[0]
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = benches.angles[i]
@@ -285,7 +299,7 @@ def main(args):
 		for i in range(len(trashes.instances)):
 			pred = trashes.predictions[i]
 			obj_filtered = WorldObject()
-			obj_filtered.objClass = 'door'
+			obj_filtered.objClass = 'trash'
 			obj_filtered.x = pred[0]
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = trashes.angles[i]
@@ -316,7 +330,7 @@ def main(args):
 		for i in range(len(fires.instances)):
 			pred = fires.predictions[i]
 			obj_filtered = WorldObject()
-			obj_filtered.objClass = 'door'
+			obj_filtered.objClass = 'fire'
 			obj_filtered.x = pred[0]
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = fires.angles[i]
@@ -347,7 +361,7 @@ def main(args):
 		for i in range(len(waters.instances)):
 			pred = waters.predictions[i]
 			obj_filtered = WorldObject()
-			obj_filtered.objClass = 'door'
+			obj_filtered.objClass = 'water'
 			obj_filtered.x = pred[0]
 			obj_filtered.y = pred[1]
 			obj_filtered.angle = waters.angles[i]
