@@ -23,7 +23,8 @@ graph_list = '/rtabmap/mapGraph'
 objects_topic_filtered = '/objects_filtered'
 
 # Perform graph node update 
-doGraphUpdate = True
+doGraphUpdate = False
+printCovariances = True
 
 # FILTER 
 process_cov = 0.3
@@ -385,7 +386,24 @@ def main(args):
 
 				text = getTextMarker('water fountain', obj_filtered.x, obj_filtered.y, height+size_z/2.0 + 0.5, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
+		
+		if(printCovariances):
+			num, vx2, vy2, cxy = doors.getMeanCovariance()
+			print 'doors: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
 
+			num, vx2, vy2, cxy = benches.getMeanCovariance()
+			print 'benches: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
+
+			num, vx2, vy2, cxy = trashes.getMeanCovariance()
+			print 'trashes: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
+
+			num, vx2, vy2, cxy = fires.getMeanCovariance()
+			print 'fires: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
+
+			num, vx2, vy2, cxy = waters.getMeanCovariance()
+			print 'waters: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
+			print '\n'
+			
 		rate.sleep()
 
 if __name__ == '__main__':

@@ -79,7 +79,7 @@ class FilteredInstances:
 
                 if(abs(dr) > min_diff or abs(dx) > min_diff or abs(dy) > min_diff ):
                     transform_matrices[pid] = np.array([[np.cos(dr), -np.sin(dr), dx], [np.sin(dr), np.cos(dr), dy], [0, 0, 1]])
-                    print 'found adjustment!!'
+                    #print 'found adjustment!!'
 
                 # update pose
                 self.posesMap[pid] = pose
@@ -163,48 +163,8 @@ class FilteredInstances:
                 unmatched_indices.append(meas_index)
 
         # Add all unmatched indices
-        print 'unmatched objs: '+str(len(unmatched_indices))
         for index in unmatched_indices:
             meas = meas_list[index]
-            self.addNewInstance(meas)
-
-    # meas is the measurement, a tuple (x,y,...) in either integer or float format
-    def addMeasurement(self, meas):
-        addNew = True
-
-        mp = np.array([ [np.float32(meas[0])],[np.float32(meas[1])] ])
-
-        for i in range(len(self.instances)):
-            x = self.predictions[i][0]
-            y = self.predictions[i][1]
-            d2 = pow(x-meas[0],2) + pow(y-meas[1], 2)
-            d = math.sqrt(d2)
-
-            if d < self.radius:
-                addNew = False
-
-                # Save measurement at object 
-                self.measurements[i].append((meas[0], meas[1]))
-
-                # Kalman correct and predict
-                self.instances[i].correct(mp)
-                tp = self.instances[i].predict()
-
-                # Save last prediction of object in list
-                self.predictions[i] = (tp[0], tp[1])
-                v = self.angles[i]
-                w = meas[2]
-                d = self.handle_angle_diff(v - w)
-                w = v - d
-                self.angles[i] = self.angles[i]*0.95 + w*0.05
-
-                self.observations[i] += 1.0
-
-                break
-
-
-        # Add new instance        
-        if addNew:
             self.addNewInstance(meas)
 
     def addNewInstance(self, meas):
@@ -231,3 +191,33 @@ class FilteredInstances:
 
         # Graph list
         self.instancesNodeId.append(self.lastId)
+
+    def getMeanCovariance(self):
+        num_instances = len(self.measurements)
+        x_vars = []
+        y_vars = []
+        xy_vars = []
+        max_x_var = 0
+        max_y_var = 0
+        max_xy_var = 0
+
+        for i in range(num_instances):
+            xs = []
+            ys = []
+            for x,y in self.measurements[i]:
+                if not math.isnan(x) and (not math.isnan(y)):
+                    xs.append(x)
+                    ys.append(y)
+
+            cov = np.cov(xs,ys)
+            if( len(xs)> 1):
+                x_vars.append(cov[0,0])
+                y_vars.append(cov[1,1])
+                xy_vars.append(cov[1,0])
+
+        if(len(x_vars)>0):
+            max_x_var = np.max(x_vars)
+            max_y_var = np.max(y_vars)
+            max_xy_var = np.max(xy_vars)
+
+        return str(num_instances), str(round(max_x_var, 2)), str(round(max_y_var,2)), str(round(max_xy_var, 2))
