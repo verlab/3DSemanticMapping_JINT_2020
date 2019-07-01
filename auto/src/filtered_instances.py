@@ -6,7 +6,10 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class FilteredInstances:
 
-    def __init__(self, radius, processNoise, measNoise):
+    def __init__(self, className, radius, processNoise, measNoise):
+
+        self.className = className
+
         # Each instance is a new kalman filter
         self.instances = []
 
@@ -116,11 +119,9 @@ class FilteredInstances:
     def addMeasurementList(self, meas_list):
         if len(meas_list) == 0: 
             return 
-        print '\n'
         
         # Find association cost
         cost = self.getErrorMatrix(meas_list)
-        print str(cost)
 
         row_ind, col_ind = linear_sum_assignment(cost)
         meas_indices = range(len(meas_list)) 
@@ -208,9 +209,7 @@ class FilteredInstances:
 
     def addNewInstance(self, meas):
         
-        print 'Adding new instance!'
-        print 'pose id: '+ str(self.lastId) + ' (of '+ str(len(self.posesMap))+ ' poses)'
-        #print str(self.posesMap[self.lastId])
+        print 'Adding new '+ self.className
         print '\n'
 
         mp = np.array([ [np.float32(meas[0])],[np.float32(meas[1])] ])            
