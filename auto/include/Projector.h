@@ -81,6 +81,16 @@ class Projector
         bool quiet_mode; 
         int x_offset;
 
+        // Method to be used for object projection
+        int method_door = 1; // 0: naive, 1: plane projection
+        int method_bench = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
+        int method_fire = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
+        int method_trash = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
+        int method_water = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
+
+        // Naive appoach, window width:
+        int window_width = 40; 
+
         // Subscribers
         ros::Subscriber cloud_sub;
         ros::Subscriber boxes_sub; 

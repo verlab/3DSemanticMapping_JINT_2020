@@ -28,7 +28,7 @@ Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, str
     too_far = true;
     showClassName = true;
     quiet_mode = true;
-    x_offset = 40;
+    x_offset = 40; 
 
     // Initialize Subscribers
     cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
@@ -113,6 +113,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     // door
     if (class_name == "door")
     {
+        
+
         obj.prob = 1;
         // Apply RANSAC in camera_frame
         pcl::ModelCoefficients coefficients;
@@ -147,7 +149,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
         // 1. Calculates object location in camera_frame:         
         // Object location is the mean of points inside bounding box
-        if(use_mean)
+        if(method_door == 0)
         {
             double mean_ratio = 1.0f/inliers.indices.size();
             for(int i = 0; i < inliers.indices.size(); i++)
@@ -160,7 +162,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Object location is the middle point between two projections of bounding boxes into the plane found
-        if(!use_mean)
+        else if(method_door == 1)
         {
             float u1 = (float) xmin;
             float v1 = (float) ymin;
@@ -179,6 +181,10 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             p_middle.z = (p1.z+p2.z)/2.0f;
 
             obj_position = p_middle;
+        }
+
+        else {
+            std::cout << "Unexpected method index for door!" << std::endl;
         }
         
         // 2. Convert oject location from camera frame to map frame
@@ -206,28 +212,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         {
             obj_normal *= -1;
         }
-
-        // ------------
-
-        // Plot normal
-        /*
-        if(coefficients.values.size() == 4)
-        {
-            pcl::PointXYZ start, end;
-            start = position_final;
-            end = position_final;
-            end.x += obj_normal(0) * 0.8;
-            end.y += obj_normal(1) * 0.8;
-            end.z += obj_normal(2) * 0.8;
-
-            //Mark in green or red 
-            if (too_far)
-              markArrow(start, end, global_frame, 1, 1.0, 0.0, 0.0);
-
-            else 
-              markArrow(start, end, global_frame, 1, 0.0, 1.0, 0.0);
-        }
-        */
        
         // Calculates object angle in camera_frame (in XY plane):
         // It is the angle of -normal in XY plane (Z is upwards in usual map frame)
@@ -247,23 +231,22 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
-        if(method == 0)
+        if(method_bench == 0)
         {
             
             double meanx = 0;
             double meany = 0;
             double meanz = 0;
-            unsigned size = 15; 
-            unsigned x_min =  obj_cloud.width/2 - (size/2);
-            unsigned y_min = obj_cloud.height/2 - (size/2);
+            unsigned x_min =  obj_cloud.width/2 - (window_width/2);
+            unsigned y_min = obj_cloud.height/2 - (window_width/2);
 
-            for(int i = x_min; i < x_min + size; i++)
-                for(int j = y_min; j< y_min + size; j++)
+            for(int i = x_min; i < x_min + window_width; i++)
+                for(int j = y_min; j< y_min + window_width; j++)
                 {
                     point_type point = obj_cloud.at(i, j);
-                    meanx += point.x / (size*size);
-                    meany += point.y / (size*size);
-                    meanz += point.z / (size*size);
+                    meanx += point.x / (window_width*window_width);
+                    meany += point.y / (window_width*window_width);
+                    meanz += point.z / (window_width*window_width);
                 }
 
             if(publish_inliers)
@@ -275,7 +258,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Remove planes and then apply clustering 
-        else if(method == 1)
+        else if(method_bench == 1)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -299,33 +282,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             seg.setDistanceThreshold (0.02);
             
             int nr_points = (int) cloud_filtered->points.size ();
-            /*
-            while (cloud_filtered->points.size () > 0.95 * nr_points)
-            {
-                // Segment the largest planar component from the remaining cloud
-                seg.setInputCloud (cloud_filtered);
-                seg.segment (*inliers, *coefficients);
-                if (inliers->indices.size () == 0)
-                {
-                    std::cout << "Could not estimate a planar model for the given pointcloud." << std::endl;
-                    break;
-                }
-
-                // Extract the planar inliers from the input cloud
-                pcl::ExtractIndices<point_type> extract;
-                extract.setInputCloud (cloud_filtered);
-                extract.setIndices (inliers);
-                extract.setNegative (false);
-
-                // Get the points associated with the planar surface
-                extract.filter (*cloud_plane);
-                
-                // Remove the planar inliers, extract the rest
-                extract.setNegative (true);
-                extract.filter (*cloud_f);
-                *cloud_filtered = *cloud_f;
-            }
-            */
+            
             // Remove NaNs
             cloud_filtered->is_dense = false;
             std::vector< int > a; 
@@ -399,7 +356,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Simple cluster 
-        else if (method == 2)
+        else if (method_bench == 2)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -484,6 +441,10 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
             }
         }
+
+        else{
+            std::cout << "Unexpected method index for door!" << std::endl;
+        }
         
         // Set position back from eigen
         obj.x = position.x;
@@ -499,23 +460,21 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
-        if(method == 0)
+        if(method_water == 0)
         {
-            
             double meanx = 0;
             double meany = 0;
             double meanz = 0;
-            unsigned size = 15; 
-            unsigned x_min =  obj_cloud.width/2 - (size/2);
-            unsigned y_min = obj_cloud.height/2 - (size/2);
+            unsigned x_min =  obj_cloud.width/2 - (window_width/2);
+            unsigned y_min = obj_cloud.height/2 - (window_width/2);
 
-            for(int i = x_min; i < x_min + size; i++)
-                for(int j = y_min; j< y_min + size; j++)
+            for(int i = x_min; i < x_min + window_width; i++)
+                for(int j = y_min; j< y_min + window_width; j++)
                 {
                     point_type point = obj_cloud.at(i, j);
-                    meanx += point.x / (size*size);
-                    meany += point.y / (size*size);
-                    meanz += point.z / (size*size);
+                    meanx += point.x / (window_width*window_width);
+                    meany += point.y / (window_width*window_width);
+                    meanz += point.z / (window_width*window_width);
                 }
 
             if(publish_inliers)
@@ -527,7 +486,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Remove planes and then apply clustering 
-        else if(method == 1)
+        else if(method_water == 1)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -652,7 +611,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Simple cluster 
-        else if (method == 2)
+        else if (method_water == 2)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -736,6 +695,10 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
                 }
 
             }
+        }
+
+        else{
+            std::cout << "Unexpected method index for water!" << std::endl;
         }
         
         // Set position back from eigen
