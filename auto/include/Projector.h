@@ -79,6 +79,7 @@ class Projector
         int block_count;
         bool too_far;
         bool quiet_mode; 
+        int x_offset;
 
         // Subscribers
         ros::Subscriber cloud_sub;

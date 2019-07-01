@@ -28,6 +28,7 @@ Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, str
     too_far = true;
     showClassName = true;
     quiet_mode = true;
+    x_offset = 40;
 
     // Initialize Subscribers
     cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
@@ -190,17 +191,26 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj_normal = Rot * obj_normal;
 
         // Verify normal is pointing to correct direction (always away from robot)
-        Eigen::Vector3d robot_normal(1.0, 0.0, 0.0);
-        tf::Matrix3x3 rot_tf_robot = robot_transform.getBasis();
-        Eigen::Matrix3d Rot_robot;
-        tf::matrixTFToEigen(rot_tf_robot, Rot_robot);
-        robot_normal = Rot_robot * robot_normal;
-        if (robot_normal.dot(obj_normal) < 0) 
+        auto rpos = robot_transform.getOrigin();
+        Eigen::Vector3d robot_position(rpos.getX(), rpos.getY(), rpos.getZ()); 
+        Eigen::Vector3d obj_start(position_final.x, position_final.y, position_final.z );
+        Eigen::Vector3d obj_end(position_final.x+obj_normal(0), position_final.y+obj_normal(1), position_final.z+obj_normal(2));
+
+        Eigen::Vector3d d1 = obj_start - robot_position; 
+        Eigen::Vector3d d2 = obj_end - robot_position; 
+
+        double dstart = d1.dot(d1);
+        double dend = d2.dot(d2);
+
+        if(dstart < dend)
         {
             obj_normal *= -1;
         }
 
+        // ------------
+
         // Plot normal
+        /*
         if(coefficients.values.size() == 4)
         {
             pcl::PointXYZ start, end;
@@ -217,7 +227,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             else 
               markArrow(start, end, global_frame, 1, 0.0, 1.0, 0.0);
         }
-
+        */
+       
         // Calculates object angle in camera_frame (in XY plane):
         // It is the angle of -normal in XY plane (Z is upwards in usual map frame)
         float x = obj_normal(0);
@@ -873,9 +884,9 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
 
         // Object boundaries
         int max_width = cloud_buffer.width;
-        int xmin = boxes_ptr->bounding_boxes.at(i).xmin+20;
+        int xmin = boxes_ptr->bounding_boxes.at(i).xmin+x_offset;
         int ymin = boxes_ptr->bounding_boxes.at(i).ymin;
-        int xmax = boxes_ptr->bounding_boxes.at(i).xmax+20;
+        int xmax = boxes_ptr->bounding_boxes.at(i).xmax+x_offset;
         int ymax = boxes_ptr->bounding_boxes.at(i).ymax;
 
         if(xmin > max_width) xmin = max_width-1;
