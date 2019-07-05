@@ -1,0 +1,23 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+
+<arg name="bag_path" />
+<node pkg="rosbag" type="play" name="player" output="screen" args="--clock --pause $(arg bag_path)"/>
+<node name="republish_rgb" type="republish" pkg="image_transport" output="screen" args="compressed in:=/kinect2/qhd/image_color_rect raw out:=/camera/rgb/image_raw"/>
+
+<rosparam param="" file="$(find downsampling_publish)/config/topics.yaml" command="load"/>
+<node name="downsampling_publisher" pkg="downsampling_publish" type="downsampling_publish.py" output="screen">
+   <param name="rate" value="2"/>   
+   <param name="prefix" value="/downsampling"/>        
+</node>
+
+<node pkg="image_view" type="extract_images" name="recorder" respawn="false" output="screen" cwd="ROS_HOME">
+    <remap from="image" to="/downsampling/camera/rgb/image_raw"/>
+</node>
+
+<!--<node pkg="image_view" type="image_view" name="viewer" output="screen" cwd="node">
+    <remap from="image" to="/downsampling/camera/rgb/image_raw"/>
+</node> -->
+
+</launch>
