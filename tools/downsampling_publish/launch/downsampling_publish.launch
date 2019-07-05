@@ -1,0 +1,10 @@
+<!-- -*- mode: XML -*- -->
+<launch>
+   <!-- List of topics that will be subsampled -->
+    <rosparam param="" file="$(find downsampling_publish)/config/topics.yaml" command="load"/>
+    <node name="downsampling_publisher" pkg="downsampling_publish" type="downsampling_publish.py" output="screen">
+        <param name="rate" value="2"/>   
+        <param name="prefix" value="/downsampling"/>        
+    </node>
+
+</launch>
