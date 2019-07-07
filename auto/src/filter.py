@@ -23,7 +23,7 @@ graph_list = '/rtabmap/mapGraph'
 objects_topic_filtered = '/objects_filtered'
 
 # Perform graph node update 
-doGraphUpdate = False
+doGraphUpdate = True
 printCovariances = True
 
 # FILTER 
