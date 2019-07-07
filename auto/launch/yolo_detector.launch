@@ -20,14 +20,15 @@
 
   <!-- Load parameters -->
   <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/ros.yaml"/>
-  <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/yolo-custom7.yaml"/>
+  <rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/yolo-custom5.yaml"/>
 
   <!-- Start darknet and ros wrapper -->
   <node pkg="darknet_ros" type="darknet_ros" name="darknet_ros" output="screen">
     <param name="weights_path"          value="$(arg yolo_weights_path)" />
     <param name="config_path"           value="$(arg yolo_config_path)" />
 
-     <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_color_rect" /> 
+     <!-- <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_color_rect" /> -->
+     <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />
     <param name="image_view/enable_opencv"            value="true" />
   </node>
 
