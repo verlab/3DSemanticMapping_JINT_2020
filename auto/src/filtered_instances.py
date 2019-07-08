@@ -3,6 +3,7 @@ from scipy.optimize import linear_sum_assignment
 import math
 from random import randint
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+#import pdb
 
 class FilteredInstances:
 
@@ -53,7 +54,7 @@ class FilteredInstances:
 
     # Callback function to update the graph nodes.
     def updateGraphList(self, poses, poseids):
-        min_diff = 0.00001
+        min_diff = 0.0
         transform_matrices = {}
         for i in range(len(poseids)):
             pid = poseids[i]
@@ -71,7 +72,8 @@ class FilteredInstances:
                 # find difference from previous position
                 (row, pitch, yaw_old) = euler_from_quaternion([old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w])
                 (row, pitch, yaw_curr) = euler_from_quaternion([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
-
+                
+                #Ro = quaternion_matrix()
                 dr = (yaw_curr - yaw_old)
                 dr=0
                 dx = (pose.position.x - old_pose.position.x)
@@ -79,7 +81,8 @@ class FilteredInstances:
 
                 if(abs(dr) > min_diff or abs(dx) > min_diff or abs(dy) > min_diff ):
                     transform_matrices[pid] = np.array([[np.cos(dr), -np.sin(dr), dx], [np.sin(dr), np.cos(dr), dy], [0, 0, 1]])
-                    #print 'found adjustment!!'
+                    print 'Found adjustment!!'
+                    #pdb.set_trace()
 
                 # update pose
                 self.posesMap[pid] = pose
@@ -98,9 +101,10 @@ class FilteredInstances:
                 self.instances[i].statePre[1,0] = y_new
 
                 # Update filter
-                self.instances[i].correct( np.array([[np.float32(x_new)],[np.float32(y_new)]]) )
-                tp = self.instances[i].predict()
-                self.predictions[i] = (tp[0], tp[1])
+                #self.instances[i].correct( np.array([[np.float32(x_new)],[np.float32(y_new)]]) )
+                #tp = self.instances[i].predict()
+                #self.predictions[i] = (tp[0], tp[1])
+                self.predictions[i] = (x_new,y_new)
 
     def getErrorMatrix(self, meas_list):
         M = np.zeros((len(meas_list), len(self.predictions)), dtype=np.float32)

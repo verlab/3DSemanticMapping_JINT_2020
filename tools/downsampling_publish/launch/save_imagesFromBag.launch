@@ -1,5 +1,13 @@
 <!-- -*- mode: XML -*- -->
 
+<!-- 
+Usage: roslaunch downsampling_publish save_imagesFromBag.launch bag_path:=
+Notes: 
+* change "rate" param to set the desired FPS      
+* The images are saved in "~/.ros/". I tried to set cwd to "node" instead of "ROS_HOME", but the files are not written to the local folder. 
+The files are written to a local folder if I run "rosrun image_view" instead of the roslaunch setup. Check later permissions of roslauch and rosrun 
+-->
+
 <launch>
 
 <arg name="bag_path" />
