@@ -25,6 +25,7 @@ objects_topic_filtered = '/objects_filtered'
 # Perform graph node update 
 doGraphUpdate = False
 printCovariances = False
+printPositions = True
 
 # FILTER 
 process_cov = 0.3
@@ -38,11 +39,11 @@ fires = None
 waters = None
 
 # Association threshold 
-door_radius = 2
+door_radius = 3
 bench_radius = 4
 trash_radius = 3.4
-fire_radius = 2.2
-water_radius = 2.5
+fire_radius = 2.7
+water_radius = 2.7
 
 # Debug
 markers_topic = '/markers'
@@ -386,6 +387,14 @@ def main(args):
 
 				text = getTextMarker('water fountain', obj_filtered.x, obj_filtered.y, height+size_z/2.0 + 0.5, class_name, i, frame, 0.3, R, G, B, life_time)
 				marker_pub.publish(text)
+			
+		rate.sleep()
+
+if __name__ == '__main__':
+	try: 
+		main(sys.argv)
+	except rospy.exceptions.ROSInterruptException:
+		print 'SHUTTING DOWN'
 		
 		if(printCovariances):
 			num, vx2, vy2, cxy = doors.getMeanCovariance()
@@ -404,8 +413,39 @@ def main(args):
 			print 'waters: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
 			print '\n'
 			
-		rate.sleep()
+		if(printPositions):
 
-if __name__ == '__main__':
-	main(sys.argv)
-	print 'SHUTTING DOWN'
+			for i in range(len(doors.instances)):
+				pred = doors.predictions[i]
+				x = pred[0]
+				y = pred[1]
+				print 'door '+str(i+1)+' : '+str(x) + ' '+str(y) 
+				print '\n'
+
+			for i in range(len(trashes.instances)):
+				pred = trashes.predictions[i]
+				x = pred[0]
+				y = pred[1]
+				print 'trash '+str(i+1)+' : '+str(x) + ' '+str(y) 
+				print '\n'
+
+			for i in range(len(waters.instances)):
+				pred = waters.predictions[i]
+				x = pred[0]
+				y = pred[1]
+				print 'water '+str(i+1)+' : '+str(x) + ' '+str(y) 
+				print '\n'
+
+			for i in range(len(benches.instances)):
+				pred = benches.predictions[i]
+				x = pred[0]
+				y = pred[1]
+				print 'bench '+str(i+1)+' : '+str(x) + ' '+str(y) 
+				print '\n'
+
+			for i in range(len(fires.instances)):
+				pred = fires.predictions[i]
+				x = pred[0]
+				y = pred[1]
+				print 'fire '+str(i+1)+' : '+str(x) + ' '+str(y) 
+				print '\n'
