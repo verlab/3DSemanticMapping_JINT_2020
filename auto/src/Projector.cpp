@@ -28,23 +28,29 @@ Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, str
     too_far = true;
     showClassName = true;
     quiet_mode = true;
-    x_offset = 40; 
+    x_offset = 0; 
 
     // Initialize Subscribers
-    cloud_sub = nh->subscribe(pointcloud_topic, 1, &Projector::cloud_callback, this);
-    boxes_sub = nh->subscribe(boxes_topic, 1, &Projector::boxes_callback, this);
+    cloud_sub = nh->subscribe(pointcloud_topic, 10, &Projector::cloud_callback, this);
+    boxes_sub = nh->subscribe(boxes_topic, 10, &Projector::boxes_callback, this);
     detection_flag_topic_sub = nh->subscribe(detection_flag_topic, 1, &Projector::flag_callback, this);
     if(rotation_optmization)
-        odom_sub = nh->subscribe(odom_topic, 1, &Projector::odom_callback, this);
+        odom_sub = nh->subscribe(odom_topic, 10, &Projector::odom_callback, this, ros::TransportHints().tcpNoDelay() );
 
     // Initialize Publishers
-    obj_pub = nh->advertise<custom_msgs::WorldObject>(out_topic, 1);
-    obj_list_pub = nh->advertise<custom_msgs::ObjectList>(out_topic+"/list", 1);
+    obj_pub = nh->advertise<custom_msgs::WorldObject>(out_topic, 10);
+    obj_list_pub = nh->advertise<custom_msgs::ObjectList>(out_topic+"/list", 10);
     
     // Initialize Debug variables
     vis_pub = nh->advertise<visualization_msgs::Marker>( "raw_marker", 0 );
-    cloud_pub = nh->advertise<sensor_msgs::PointCloud2>("segmentation_vis", 10);
+    cloud_pub = nh->advertise<sensor_msgs::PointCloud2>("segmentation_vis", 1);
     
+}
+
+void Projector::execute()
+{
+    ros::MultiThreadedSpinner spinner(4); // Use 4 threads
+    spinner.spin(); // spin() will not return until the node has been shutdown
 }
 
 // Check for frame transform every time a detection image is received
@@ -92,7 +98,10 @@ void Projector::odom_callback(const nav_msgs::Odometry & odom)
             block_count--;
         }
         
-        else block_projection = false;
+        else
+        {
+            block_projection = false;
+        }
     }
 
     last_rotation = rotation;
@@ -108,12 +117,10 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     obj.prob = -1;
     
     pcl::PointCloud<point_type> inlier_cloud;
-    
 
     // door
     if (class_name == "door")
     {
-        
 
         obj.prob = 1;
         // Apply RANSAC in camera_frame
@@ -132,6 +139,15 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         seg.setDistanceThreshold (0.1);
         seg.setInputCloud (obj_cloud.makeShared());
         seg.segment (inliers, coefficients); 
+
+        // Test if segmentation was successful
+        if (inliers.indices.size () == 0)
+        {
+            PCL_ERROR ("Could not estimate a planar model for the given dataset.");
+            obj.prob = -1;
+            return obj;
+        }
+
         if(publish_inliers)
         {
             inlier_cloud.width = inliers.indices.size();
@@ -144,7 +160,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             }
         }
 
-        //if(!quiet_mode) ROS_INFO_STREAM("\nInliers count: "+ std::to_string( inliers.indices.size()));
         pcl::PointXYZ obj_position;
 
         // 1. Calculates object location in camera_frame:         
@@ -227,7 +242,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     {
         obj.prob = 1;
         pcl::PointXYZ position; 
-        int minimum_cluster_size = 4;
+        int minimum_cluster_size = 10;
         int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
@@ -456,7 +471,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
     {
         obj.prob = 1;
         pcl::PointXYZ position; 
-        int minimum_cluster_size = 4;
+        int minimum_cluster_size = 10;
         int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
@@ -802,6 +817,13 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.angle = 0;
     }
 
+    else
+    {
+        if(!quiet_mode) ROS_INFO_STREAM("\nUnimplemented");
+        obj.prob = -1.0;
+    }
+
+    // Publish clustered cloud?
     if(publish_inliers)
     {
         // Convert pointcloud to ROS msg
@@ -816,12 +838,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         cloud_pub.publish(inliers_msg);
     }
 
-    else
-    {
-        if(!quiet_mode) ROS_INFO_STREAM("\nUnimplemented");
-        obj.prob = -1.0;
-    }
-
     return obj;
 }
 
@@ -829,7 +845,6 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
 {
     count++; 
     transform = transform_buffer;
-    if(!quiet_mode) ROS_INFO_STREAM("\nProcessing "+std::to_string(count)+ " objects. ");
     int box_num = boxes_ptr->bounding_boxes.size();
 
     custom_msgs::ObjectList objects_msg;
@@ -838,8 +853,7 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
     // Process each bounding box
     for(int i = 0; i < box_num; i++)
     {
-        if(boxes_ptr->bounding_boxes.at(i).Class != "door")
-            if(!quiet_mode) ROS_INFO_STREAM("\n\nProcessing " + boxes_ptr->bounding_boxes.at(i).Class + ": ");
+        if(!quiet_mode) ROS_INFO_STREAM("\n\nProcessing " + boxes_ptr->bounding_boxes.at(i).Class + ": ");
 
         // Object class
         std::string class_name = boxes_ptr->bounding_boxes.at(i).Class;

@@ -24,7 +24,7 @@ objects_topic_filtered = '/objects_filtered'
 
 # Perform graph node update 
 doGraphUpdate = False
-printCovariances = True
+printCovariances = False
 
 # FILTER 
 process_cov = 0.3
@@ -408,3 +408,4 @@ def main(args):
 
 if __name__ == '__main__':
 	main(sys.argv)
+	print 'SHUTTING DOWN'

@@ -75,6 +75,5 @@ int main (int argc, char** argv)
     ROS_INFO_STREAM("\n camera_frame: "+ camera_frame );
     ROS_INFO_STREAM("\n max_proj_dist: "+ std::to_string( max_proj_dist ));
 
-    // Spin
-    ros::spin ();
+    projector.execute();
 }
