@@ -73,10 +73,12 @@ void Projector::flag_callback(const std_msgs::Int8 & flag)
 void Projector::odom_callback(const nav_msgs::Odometry & odom)
 {
     // rotation_thresh: cannot rotate more than this amount, otherwise output is blocked for X frames.  
-    double rotation_thresh = 0.09; 
+    //double rotation_thresh = 0.1; 
+    //double rotation_thresh = 0.05; 
+    double rotation_thresh = 0.02; 
 
     // blocked_frames: number of frames projection will be blocked when rotation is too large
-    int blocked_frames = 4; 
+    int blocked_frames = 6; 
 
     double roll, pitch, yaw;
     auto ori = odom.pose.pose.orientation;
@@ -238,7 +240,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.angle = angle;
     }
 
-    else if (class_name == "bench" || class_name == "fire")
+    else if (class_name == "bench" || class_name == "water")
     {
         obj.prob = 1;
         pcl::PointXYZ position; 
@@ -467,15 +469,15 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.angle = 0;
     }
 
-    else if (class_name == "water" || class_name == "trash")
+    else if (class_name == "fire" || class_name == "trash")
     {
         obj.prob = 1;
         pcl::PointXYZ position; 
-        int minimum_cluster_size = 10;
+        int minimum_cluster_size = 50;
         int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
-        if(method_water == 0)
+        if(method_fire == 0)
         {
             double meanx = 0;
             double meany = 0;
@@ -501,7 +503,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Remove planes and then apply clustering 
-        else if(method_water == 1)
+        else if(method_fire == 1)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -626,7 +628,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Simple cluster 
-        else if (method_water == 2)
+        else if (method_fire == 2)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 

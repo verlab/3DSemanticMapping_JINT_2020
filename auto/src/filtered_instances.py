@@ -114,7 +114,7 @@ class FilteredInstances:
                 x_meas = np.float32(meas_list[j][0])
                 y_meas = np.float32(meas_list[j][1])
 
-                distance = np.sqrt((x_meas - x)**2 + (y_meas - y)**2)
+                distance = np.sqrt((x_meas - x)**2.0 + (y_meas - y)**2.0)
                 M[j, i] = distance
         
         return M

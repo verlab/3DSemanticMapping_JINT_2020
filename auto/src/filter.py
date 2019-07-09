@@ -30,6 +30,7 @@ printPositions = True
 # FILTER 
 process_cov = 0.3
 meas_cov = 5
+min_obs = 6.0
 
 # Classes 
 doors = None 
@@ -39,7 +40,7 @@ fires = None
 waters = None
 
 # Association threshold 
-door_radius = 3
+door_radius = 4
 bench_radius = 4
 trash_radius = 3.4
 fire_radius = 2.7
@@ -214,6 +215,7 @@ def main(args):
 	global object_list_topic_raw, object_list_topic_raw, process_cov, meas_cov, doGraphUpdate
 	global doors, benches, trashes, fires, waters 
 	global door_radius, bench_radius, trash_radius, fire_radius, water_radius
+	global min_obs
 
 	# Initialize node
 	rospy.init_node('object_marker', anonymous=True)
@@ -236,7 +238,6 @@ def main(args):
 	while not rospy.is_shutdown(): 
 		
 		life_time = 5.0
-		min_obs = 1.0
 		# Publish doors
 		for i in range(len(doors.instances)):
 			pred = doors.predictions[i]
@@ -419,33 +420,38 @@ if __name__ == '__main__':
 				pred = doors.predictions[i]
 				x = pred[0]
 				y = pred[1]
-				print 'door '+str(i+1)+' : '+str(x) + ' '+str(y) 
-				print '\n'
+				if doors.observations[i] > min_obs:
+					print 'door '+str(i+1)+' : '+str(x) + ' '+str(y) 
+			print '\n'
 
 			for i in range(len(trashes.instances)):
 				pred = trashes.predictions[i]
 				x = pred[0]
 				y = pred[1]
-				print 'trash '+str(i+1)+' : '+str(x) + ' '+str(y) 
-				print '\n'
+				if trashes.observations[i] > min_obs:
+					print 'trash '+str(i+1)+' : '+str(x) + ' '+str(y) 
+			print '\n'
 
 			for i in range(len(waters.instances)):
 				pred = waters.predictions[i]
 				x = pred[0]
 				y = pred[1]
-				print 'water '+str(i+1)+' : '+str(x) + ' '+str(y) 
-				print '\n'
+				if waters.observations[i] > min_obs:
+					print 'water '+str(i+1)+' : '+str(x) + ' '+str(y) 
+			print '\n'
 
 			for i in range(len(benches.instances)):
 				pred = benches.predictions[i]
 				x = pred[0]
 				y = pred[1]
-				print 'bench '+str(i+1)+' : '+str(x) + ' '+str(y) 
-				print '\n'
+				if benches.observations[i] > min_obs:
+					print 'bench '+str(i+1)+' : '+str(x) + ' '+str(y) 
+			print '\n'
 
 			for i in range(len(fires.instances)):
 				pred = fires.predictions[i]
 				x = pred[0]
 				y = pred[1]
-				print 'fire '+str(i+1)+' : '+str(x) + ' '+str(y) 
-				print '\n'
+				if fires.observations[i] > min_obs:
+					print 'fire '+str(i+1)+' : '+str(x) + ' '+str(y) 
+			print '\n'
