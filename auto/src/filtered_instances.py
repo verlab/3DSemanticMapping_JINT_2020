@@ -7,7 +7,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class FilteredInstances:
 
-    def __init__(self, className, radius, processNoise, measNoise):
+    def __init__(self, className, radius, processNoise, measNoise, min_obs, groundtruths=[]):
 
         self.className = className
 
@@ -40,6 +40,10 @@ class FilteredInstances:
         # Instance node id
         self.instancesNodeId = []
 
+        self.min_obs = min_obs
+
+        # List with the exact locations of objects, for doing experiments
+        self.gts = groundtruths
         
     # for handling the cycle behaviour
     def handle_angle_diff(self, angle):
@@ -51,6 +55,10 @@ class FilteredInstances:
                 angle = 2*np.pi + angle
 
         return angle
+
+    def euclidianDistance(self, x1, y1, x2, y2):
+        distance = np.sqrt((x1 - x2)**2.0 + (y1 - y2)**2.0)
+        return distance
 
     # Callback function to update the graph nodes.
     def updateGraphList(self, poses, poseids):
@@ -118,6 +126,83 @@ class FilteredInstances:
                 M[j, i] = distance
         
         return M
+    
+    def getGroundtruthErrorMatrix(self):
+        # Select predictions with minimum number of observations
+        preds = []
+        for i in range(len(self.observations)):
+            if self.observations[i] >= self.min_obs:
+                preds.append(self.predictions[i])
+
+        if len(self.gts) > 0 and len(preds)>0:
+            M = np.zeros((len(self.gts), len(preds)), dtype=np.float32)
+            for i in range(len(preds)):
+                x, y = preds[i]
+                for j in range(len(self.gts)):
+                    x_gt = np.float32(self.gts[j][0])
+                    y_gt = np.float32(self.gts[j][1])
+
+                    distance = np.sqrt((x_gt - x)**2.0 + (y_gt - y)**2.0)
+                    M[j, i] = distance
+            return M
+
+        else:
+            return None
+
+    def getMeanError(self):
+        max_dist = self.radius
+        preds = []
+        mean_error = 0
+
+        # Select predictions with minimum number of observations
+        for i in range(len(self.observations)):
+            if self.observations[i] >= self.min_obs:
+                preds.append(self.predictions[i])
+
+        instance_count = len(preds) 
+        if len(self.gts) == 0 or len(preds) == 0: 
+            return '0','0','0', str(instance_count)
+               
+        pred_indices = list(range(len(preds)))
+        gts_indices = list(range(len(self.gts)))
+        unmatchedObjs = 0
+        costs = self.getGroundtruthErrorMatrix()
+        costs2 = np.zeros((len(self.gts), 0))
+        
+        # Remove indices whose distance is too far from all groundtruths
+        for i in range(len(preds)):
+            ci = costs[:, i]
+            remove_i = True
+            for j in range(len(self.gts)):
+                if ci[j] < max_dist:
+                    remove_i = False
+                    break
+            
+            if remove_i: 
+                unmatchedObjs+=1
+                pred_indices.remove(i)
+            else:
+                costs2 = np.c_[costs2, ci]
+
+        # Perform instance association: rows -> gt indices; cols -> instances
+        row_ind, col_ind = linear_sum_assignment(costs2)
+        pred_tmp = list(pred_indices)
+        for i in range(len(row_ind)):
+            gt_index = row_ind[i]
+            instance_index = pred_indices[col_ind[i]]
+
+            # Test if assigned object has distances less than radius 
+
+            pred_tmp.remove(instance_index)
+            gts_indices.remove(gt_index)
+
+            mean_error += costs2[row_ind[i], col_ind[i]]
+
+        mean_error/=len(row_ind)
+        falsePositives = len(pred_tmp)+unmatchedObjs
+        falseNegatives = len(gts_indices)
+
+        return str(instance_count), str(mean_error), str(falsePositives), str(falseNegatives)
 
     # add measurement list, for the case when more than one object is seen in the same frame
     def addMeasurementList(self, meas_list):

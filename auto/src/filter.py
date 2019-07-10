@@ -25,7 +25,8 @@ objects_topic_filtered = '/objects_filtered'
 # Perform graph node update 
 doGraphUpdate = False
 printCovariances = False
-printPositions = True
+printPositions = False
+printMeanError = True
 
 # FILTER 
 process_cov = 0.3
@@ -40,11 +41,18 @@ fires = None
 waters = None
 
 # Association threshold 
-door_radius = 4
+door_radius = 3
 bench_radius = 4
-trash_radius = 3.4
-fire_radius = 2.7
-water_radius = 2.7
+trash_radius = 2.5
+fire_radius = 2.3
+water_radius = 2.3
+
+# ground truths
+door_gt = [(-3.668, 4.993), (-2.594, 4.192), (-0.181, -5.362), (-1.544, -3.578), (1.686, -3.738), (0.711, -5.175), (-0.579, -2.481), (11.019, 9.995), (11.988, 11.240), (17.875, 20.793), (17.020, 19.669), (24.580, 29.927), (22.345, 26.843), (21.484, 25.707), (32.509, 37.543), (31.188, 39.274), (30.447, 39.114), (19.669, 40.091) , (20.922, 39.260)]
+bench_gt = [(13.155, 15.224)]
+fire_gt = [(-12.526, 10.987), (-13.137, 10.125), (1.587, 0.750), (5.818, -2.313), (9.383, 9.687), (19.569, 23.267), (27.030, 34.989),  (28.657, 31.067), (18.904, 40.735), (-1.096, 3.207)]
+water_gt = [(3.291, -4.051),(3.283, -3.955),(32.363, 34.662),(31.863, 34.990)]
+trash_gt = [(-0.965, -4.654), (15.345, 18.127), (29.407, 37.500)]
 
 # Debug
 markers_topic = '/markers'
@@ -229,15 +237,15 @@ def main(args):
 	marker_pub = rospy.Publisher(markers_topic, Marker, queue_size=10)
 
 	# Object instance lists
-	doors = FilteredInstances('door', door_radius, process_cov, meas_cov)
-	benches = FilteredInstances('bench', bench_radius, process_cov, meas_cov)
-	trashes = FilteredInstances('trash bin', trash_radius, process_cov, meas_cov) 
-	fires = FilteredInstances('fire extinguisher', fire_radius, process_cov, meas_cov)
-	waters = FilteredInstances('water fountain', water_radius, process_cov, meas_cov) 
+	doors = FilteredInstances('door', door_radius, process_cov, meas_cov, min_obs, door_gt)
+	benches = FilteredInstances('bench', bench_radius, process_cov, meas_cov, min_obs, bench_gt)
+	trashes = FilteredInstances('trash bin', trash_radius, process_cov, meas_cov, min_obs, trash_gt) 
+	fires = FilteredInstances('fire extinguisher', fire_radius, process_cov, meas_cov, min_obs, fire_gt)
+	waters = FilteredInstances('water fountain', water_radius, process_cov, meas_cov, min_obs, water_gt) 
 
 	while not rospy.is_shutdown(): 
 		
-		life_time = 5.0
+		life_time = 0
 		# Publish doors
 		for i in range(len(doors.instances)):
 			pred = doors.predictions[i]
@@ -412,6 +420,23 @@ if __name__ == '__main__':
 
 			num, vx2, vy2, cxy = waters.getMeanCovariance()
 			print 'waters: vx2 = '+vx2+', vy2 = '+vy2+', cxy = '+cxy+' ['+num+' instances]'
+			print '\n'
+
+		if(printMeanError):
+			number, error, fpositives, fnegatives = doors.getMeanError()
+			print 'doors ' + number +' : error = '+error+', fpositives = '+fpositives+', fnegatives = '+fnegatives
+
+			number, error, fpositives, fnegatives = benches.getMeanError()
+			print 'benches ' + number +' : error = '+error+', fpositives = '+fpositives+', fnegatives = '+fnegatives
+
+			number, error, fpositives, fnegatives = trashes.getMeanError()
+			print 'trashes ' + number +' : error = '+error+', fpositives = '+fpositives+', fnegatives = '+fnegatives
+
+			number, error, fpositives, fnegatives = fires.getMeanError()
+			print 'fires ' + number +' : error = '+error+', fpositives = '+fpositives+', fnegatives = '+fnegatives
+
+			number, error, fpositives, fnegatives = waters.getMeanError()
+			print 'waters ' + number +' : error = '+error+', fpositives = '+fpositives+', fnegatives = '+fnegatives
 			print '\n'
 			
 		if(printPositions):

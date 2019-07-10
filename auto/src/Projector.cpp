@@ -245,7 +245,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.prob = 1;
         pcl::PointXYZ position; 
         int minimum_cluster_size = 10;
-        int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
         if(method_bench == 0)
@@ -474,7 +473,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.prob = 1;
         pcl::PointXYZ position; 
         int minimum_cluster_size = 50;
-        int method = 2; 
 
         // Naive approach: get the mean value at the center with a square window
         if(method_fire == 0)
