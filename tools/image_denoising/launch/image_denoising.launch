@@ -1,0 +1,8 @@
+<!-- -*- mode: XML -*- -->
+<launch>
+    <rosparam param="" file="$(find image_denoising)/config/topics.yaml" command="load"/>
+    <node name="image_process" pkg="image_denoising" type="image_denoising.py" output="screen">
+        <param name="noise" value="1"/>   
+        <param name="prefix" value="/denoised"/>     
+    </node>
+</launch>
