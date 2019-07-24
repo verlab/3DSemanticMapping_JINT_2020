@@ -16,7 +16,7 @@ class NoisePublisher():
         rospy.init_node('image_denoising', anonymous=True)
         
         prefix = rospy.get_param('~prefix', "/denoised")
-        self.noise = rospy.get_param('~noise', 1)
+        self.noise = rospy.get_param('~noise')
         rate = 30  
         r = rospy.Rate(rate)    
         self.topics_selected = rospy.get_param('/topics', '')
@@ -53,10 +53,11 @@ class NoisePublisher():
            print(e)
         row,col,ch = cv_image.shape
         mean = 0
-        var = 10*self.noise
+        var = self.noise
         sigma = var**0.5
         gauss = np.random.normal(mean,sigma,(row,col,ch))
         gauss = gauss.reshape(row,col,ch)
+        cv_image = cv_image.astype(np.float)
         noisy = cv_image + gauss
         #msg = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
         noisy = noisy.astype(np.uint8)

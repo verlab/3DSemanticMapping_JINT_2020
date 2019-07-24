@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- Setup simulation time to use for rosbag -->
+    <param name="use_sim_time" value="true"/>
+    
+    <!-- Pulled from iai_kinect2 kinect2_bridge -->
+    <arg name="base_name"         default="rtab_dataset"/>
+    <arg name="queue_size"        default="5"/>
+    <arg name="machine"           default="localhost"/>
+    <arg name="nodelet_manager"   default="$(arg base_name)"/>
+    <arg name="start_manager"     default="true"/>
+    <arg name="use_machine"       default="true"/>
+    <arg name="respawn"           default="false"/>
+
+    <!-- Start nodelet manager -->
+    <machine name="localhost" address="localhost" if="$(arg use_machine)"/>
+
+    <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager"
+       if="$(arg start_manager)" machine="$(arg machine)" output="screen"/>
+ 
+
+    <!-- Republish pointcloud for RTAB mapping dataset -->
+  <node pkg="nodelet" type="nodelet" name="$(arg base_name)_points_xyzrgb_qhd" machine="$(arg machine)"
+        args="load depth_image_proc/point_cloud_xyzrgb $(arg nodelet_manager)" respawn="$(arg respawn)">
+    <remap from="rgb/camera_info"             to="/camera/rgb/camera_info"/>
+    <remap from="rgb/image_rect_color"        to="/camera/rgb/image_raw"/>
+    <remap from="depth_registered/image_rect" to="/camera/depth/image_raw"/>
+    <remap from="depth_registered/points"     to="/camera/depth_registered/points"/>
+    <param name="queue_size" type="int" value="$(arg queue_size)"/>
+  </node>
+
+</launch>

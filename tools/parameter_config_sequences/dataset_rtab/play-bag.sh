@@ -1,0 +1,1 @@
+roslaunch files/publish_pointcloud.launch respawn:=false & roslaunch files/uncompress_demo_rtab.launch & sleep 2; rosbag play --pause --clock files/demo_mapping.bag -r 1.0 /az3/base_controller/odom:=/odom /jn0/base_scan:=/scan /data_throttled_camera_info:=/camera/rgb/camera_info
