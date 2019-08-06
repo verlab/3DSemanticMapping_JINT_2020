@@ -1,2 +1,0 @@
-# topics: [] # pega todos os topicos do ros
-topics: ['/camera/rgb/image_raw'] # a ordem dos topicos consiste na ordem de publicação
