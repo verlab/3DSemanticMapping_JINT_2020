@@ -1,6 +1,6 @@
 ## <b>Extending Maps with Semantic and Contextual Object Information for Robot Navigation</b> <br>[[Project Page]](https://www.verlab.dcc.ufmg.br/semantic-mapping-for-robotics/) [[Paper]](https://ieeexplore.ieee.org/document/8588525)
 
-<img src='robotSemanticMapping/images/teaser.png' align="center" width=900>
+<img src='images/teaser.png' align="center" width=900>
 
 Scene understanding is a crucial factor in the development of robots that can effectively act in an uncontrolled, dynamic, unstructured, and unknown environment, such as those found in real-world scenarios. We propose an open framework for building hybrid maps, combining both environment structure (metric map) and environment semantics (objects classes) to support autonomous robot perception and navigation tasks.
 
