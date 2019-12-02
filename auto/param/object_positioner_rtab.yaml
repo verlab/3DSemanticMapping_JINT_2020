@@ -1,0 +1,24 @@
+# Camera and projection parameters
+camera_cx: 319.5
+camera_cy: 239.5
+camera_fx: 525.0
+camera_fy: 525.0
+max_proj_distance: 7.0
+
+# Frames of reference
+camera_frame: /openni_rgb_optical_frame
+robot_frame: /base_link
+global_frame: /map
+
+# Object detection classes
+classes:
+    - door
+    - bench
+    - trash
+    - fire
+    - water
+
+# Darknet_ros topics
+pointcloud_topic: /camera/depth_registered/points
+boxes_topic: /darknet_ros/bounding_boxes
+detection_flag_topic: /darknet_ros/flag_detection

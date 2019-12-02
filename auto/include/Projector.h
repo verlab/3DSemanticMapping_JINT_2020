@@ -35,11 +35,12 @@
 #define point_type pcl::PointXYZRGB
 
 using std::string; 
+using std::vector;
 
 class Projector
 {
     public:
-        Projector(ros::NodeHandle * node_handle, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic);
+        Projector(ros::NodeHandle * node_handle, vector<string> classes, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic, bool quiet);
         custom_msgs::WorldObject process_cloud(std::string class_name, pcl::PointCloud<point_type> obj_cloud, int xmin, int xmax, int ymin, int ymax);
         pcl::PointXYZ pointFromUV(float A, float B, float C, float D, float fx, float fy, float cx, float cy, float u, float v);
         void execute();
@@ -51,6 +52,16 @@ class Projector
         string camera_frame; 
         string robot_frame;
         string global_frame; 
+
+        // Classes
+        vector<string> class_names;
+
+        // Projection method
+        // 0: Naive - median of middle points
+        // 1: Preferred - Simple clustering (OR plane segmentation for doors)
+        // 2: Advanced - Remove planes and then apply clustering
+        // others: defaults to Preferred
+        int projection_method;
 
         // Camera intrinsics
         float camera_fx;
@@ -64,8 +75,7 @@ class Projector
         // If set, does not allow projections when robot is rotating
         bool rotation_optmization;
 
-        // If set, does not use camera projection to find object position; instead, it uses the centroid of the associated pointcloud
-        bool use_mean; 
+        // Shows class name on top of visualization mark on rviz
         bool showClassName; 
 
     private:
@@ -80,13 +90,6 @@ class Projector
         bool too_far;
         bool quiet_mode; 
         int x_offset;
-
-        // Method to be used for object projection
-        int method_door = 1; // 0: naive, 1: plane projection
-        int method_bench = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
-        int method_fire = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
-        int method_trash = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
-        int method_water = 2; // 0: naive, 1: plane removal + custering, 2: simple clustering
 
         // Naive appoach, window width:
         int window_width = 40; 

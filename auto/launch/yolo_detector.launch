@@ -1,18 +1,6 @@
 <?xml version="1.0"?>
 
 <launch>
-  <!--<node pkg="auto" type="image_publisher.py" name="image_publisher" output="screen">
-    <remap from="input" to="/camera/rgb/image_raw" />
-    <remap from="output" to="/darknet_ros/camera_topic/image_raw" />
-  </node>-->
-
-<!--
-	<include file="$(find darknet_ros)/launch/darknet_ros.launch"> 
-    	<param name="camera_reading/topic"    value="camera/rgb/image_raw" />
-    	<param name="enable_opencv"           value="true" />
-
-    </include>
--->
 
 <!-- Config and weights folder. -->
   <arg name="yolo_weights_path"          default="$(find darknet_ros)/yolo_network_config/weights"/>
@@ -31,27 +19,5 @@
     <param name="subscribers/camera_reading/topic"    value="/camera/rgb/image_raw" />
     <param name="image_view/enable_opencv"            value="true" />
   </node>
-
-<!-- -->
-<!-- -->
-<!-- -->
-<!-- 
-    <include file="$(find auto)/launch/obj_positioner.launch"> 
-    </include>
- -->
-<!-- -->
-<!-- -->
-<!-- -->
-<!-- -->
-<!-- 
-  <node pkg="auto" type="object_positioner" name="object_positioner_node" output="screen" launch-prefix="nice -n -15">
-  </node>
-   -->
-<!-- -->
-<!-- -->
-  <!-- 
-  <node pkg="auto" type="filter.py" name="kalman_filter" output="screen">
-  </node>
-  -->
 </launch>
 

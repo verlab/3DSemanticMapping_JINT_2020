@@ -1,0 +1,4 @@
+<launch>
+	<node name="republish_rgb" type="republish" pkg="image_transport" output="screen" args="compressed in:=/kinect2/qhd/image_color_rect raw out:=/camera/rgb/image_raw" />
+	<node name="republish_depth" type="republish" pkg="image_transport" output="screen" args="compressed in:=/kinect2/qhd/image_depth_rect raw out:=/camera/depth/image_raw" />
+</launch>

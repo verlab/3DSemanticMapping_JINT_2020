@@ -23,6 +23,18 @@ int main (int argc, char** argv)
     // FRAMES
     string camera_frame, robot_frame, global_frame; 
 
+    // CLASSES
+    vector<string> class_names;
+
+    // Projection method
+    // 0: Naive - median of middle points
+    // 1: Preferred - Simple clustering (OR plane segmentation for doors)
+    // 2: Advanced - Remove planes and then apply clustering
+    // others: defaults to Preferred
+    int projection_method = 1;
+
+    bool quiet_mode = false;
+
     // OTHER 
     // Astra camera
     double camera_fx = 527.135883f;
@@ -49,6 +61,10 @@ int main (int argc, char** argv)
     nh->param("camera_frame", camera_frame, string("/camera_rgb_optical_frame"));
     nh->param("robot_frame", robot_frame, string("/base_link"));
     nh->param("global_frame", global_frame, string("/map"));
+
+    nh->param("classes", class_names, vector<string>());
+    nh->param("projection_method", projection_method, 1);
+    nh->param("quiet_mode", quiet_mode, false);
     
     nh->param("camera_cx", camera_cx, 306.540);
     nh->param("camera_cy", camera_cy, 222.412);
@@ -60,7 +76,8 @@ int main (int argc, char** argv)
     nh->param("max_proj_distance", max_proj_dist, 7.0);
 
     // Initialize and set params
-    Projector projector(nh, pointcloud_topic, boxes_topic, odom_topic, detection_flag_topic,out_topic);
+    Projector projector(nh, class_names, pointcloud_topic, boxes_topic, odom_topic, detection_flag_topic,out_topic, quiet_mode);
+    projector.projection_method = projection_method;
     projector.camera_frame = camera_frame;
     projector.robot_frame = robot_frame;
     projector.global_frame = global_frame;
@@ -69,11 +86,10 @@ int main (int argc, char** argv)
     projector.camera_fx = camera_fx;
     projector.camera_fy = camera_fy;
     projector.rotation_optmization = rotation_optmization; 
-    projector.use_mean = use_mean;
     projector.max_proj_dist = max_proj_dist;
 
-    ROS_INFO_STREAM("\n camera_frame: "+ camera_frame );
-    ROS_INFO_STREAM("\n max_proj_dist: "+ std::to_string( max_proj_dist ));
+    ROS_INFO_STREAM("\n CAMERA FRAME: "+ camera_frame );
+    ROS_INFO_STREAM("\n MAX PROJECTION DISTANCE: "+ std::to_string( max_proj_dist ));
 
     projector.execute();
 }

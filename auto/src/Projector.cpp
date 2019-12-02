@@ -13,21 +13,21 @@
 #include <pcl/segmentation/extract_clusters.h>
 
 using std::string;
-
-Projector::Projector(ros::NodeHandle * node_handle, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic)
+Projector::Projector(ros::NodeHandle * node_handle, vector<string> classes, string pointcloud_topic, string boxes_topic, string odom_topic, string detection_flag_topic, string out_topic, bool quiet)
 {
     nh = node_handle;
+    class_names = classes;
+    projection_method = 1; 
     listener = new tf::TransformListener;
     count = 0;
     block_projection = false;
     rotation_optmization = true;
     last_rotation = 0.0f;
     block_count = 0;
-    this->use_mean = false;
     max_proj_dist = 5.0;
     too_far = true;
     showClassName = true;
-    quiet_mode = true;
+    quiet_mode = quiet;
     x_offset = 0; 
 
     // Initialize Subscribers
@@ -111,16 +111,25 @@ void Projector::odom_callback(const nav_msgs::Odometry & odom)
 
 custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::PointCloud<point_type> obj_cloud, int xmin, int xmax, int ymin, int ymax)
 {
-    // publish_inliers : used to visualize the inlier cloud detected. 
-    bool publish_inliers = true;
+    // publish_inliers: used to visualize the inlier cloud detected. 
+    bool publish_inliers = false;
 
     custom_msgs::WorldObject obj;
     obj.objClass = class_name;
     obj.prob = -1;
     
     pcl::PointCloud<point_type> inlier_cloud;
-
-    // door
+    
+    // Test if detected class is in classes array
+    if (std::find(class_names.begin(), class_names.end(), class_name) == class_names.end())
+    {
+        // Element not in vector
+        if(!quiet_mode) ROS_INFO_STREAM("\nClass "+class_name+ " not found in array of classes. Try adding it to the .yaml file. ");
+        obj.prob = -1.0;
+        return obj;
+    }
+    
+    // Door type 
     if (class_name == "door")
     {
 
@@ -165,8 +174,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         pcl::PointXYZ obj_position;
 
         // 1. Calculates object location in camera_frame:         
-        // Object location is the mean of points inside bounding box
-        if(method_door == 0)
+        // Naive: Object location is the mean of points inside bounding box
+        if(projection_method == 0)
         {
             double mean_ratio = 1.0f/inliers.indices.size();
             for(int i = 0; i < inliers.indices.size(); i++)
@@ -178,8 +187,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             }
         }
 
-        // Object location is the middle point between two projections of bounding boxes into the plane found
-        else if(method_door == 1)
+        // Preferred: Object location is the middle point between two projections of bounding boxes into the plane found
+        else 
         {
             float u1 = (float) xmin;
             float v1 = (float) ymin;
@@ -198,10 +207,6 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
             p_middle.z = (p1.z+p2.z)/2.0f;
 
             obj_position = p_middle;
-        }
-
-        else {
-            std::cout << "Unexpected method index for door!" << std::endl;
         }
         
         // 2. Convert oject location from camera frame to map frame
@@ -229,7 +234,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         {
             obj_normal *= -1;
         }
-       
+    
         // Calculates object angle in camera_frame (in XY plane):
         // It is the angle of -normal in XY plane (Z is upwards in usual map frame)
         float x = obj_normal(0);
@@ -240,226 +245,93 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.angle = angle;
     }
 
-    else if (class_name == "bench" || class_name == "water")
-    {
+    // Person type
+    else if(class_name == "person"){
         obj.prob = 1;
         pcl::PointXYZ position; 
         int minimum_cluster_size = 10;
 
-        // Naive approach: get the mean value at the center with a square window
-        if(method_bench == 0)
+        pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
+
+        // Create the filtering object: downsample the dataset using a leaf size of 1cm
+        pcl::VoxelGrid<point_type> vg;
+        pcl::PointCloud<point_type>::Ptr cloud_filtered (new pcl::PointCloud<point_type>), cloud_f (new pcl::PointCloud<point_type>);
+        vg.setInputCloud (cloud);
+        vg.setLeafSize (0.01f, 0.01f, 0.01f);
+        vg.filter (*cloud_filtered);
+
+        // (Do not remove planes from model ...)
+        
+        // Remove NaNs
+        cloud_filtered->is_dense = false;
+        std::vector< int > a; 
+        pcl::removeNaNFromPointCloud(*cloud_filtered, *cloud_filtered, a);
+        
+        if(cloud_filtered->size() < minimum_cluster_size)
         {
-            
-            double meanx = 0;
-            double meany = 0;
-            double meanz = 0;
-            unsigned x_min =  obj_cloud.width/2 - (window_width/2);
-            unsigned y_min = obj_cloud.height/2 - (window_width/2);
-
-            for(int i = x_min; i < x_min + window_width; i++)
-                for(int j = y_min; j< y_min + window_width; j++)
-                {
-                    point_type point = obj_cloud.at(i, j);
-                    meanx += point.x / (window_width*window_width);
-                    meany += point.y / (window_width*window_width);
-                    meanz += point.z / (window_width*window_width);
-                }
-
-            if(publish_inliers)
-            {
-                inlier_cloud = obj_cloud; 
-            }
-
-            position = Projector::convertToMapFrame(pcl::PointXYZ(meanx, meany, meanz));
+            // Not enough points
+            obj.prob = -1; 
         }
-
-        // Remove planes and then apply clustering 
-        else if(method_bench == 1)
+        else
         {
-            pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
+            // Creating the KdTree object for the search method of the extraction
+            pcl::search::KdTree<point_type>::Ptr tree (new pcl::search::KdTree<point_type>);
+            tree->setInputCloud (cloud_filtered);
 
-            // Create the filtering object: downsample the dataset using a leaf size of 1cm
-            pcl::VoxelGrid<point_type> vg;
-            pcl::PointCloud<point_type>::Ptr cloud_filtered (new pcl::PointCloud<point_type>), cloud_f (new pcl::PointCloud<point_type>);
-            vg.setInputCloud (cloud);
-            vg.setLeafSize (0.01f, 0.01f, 0.01f);
-            vg.filter (*cloud_filtered);
+            std::vector<pcl::PointIndices> cluster_indices;
+            pcl::EuclideanClusterExtraction<point_type> ec;
+            ec.setClusterTolerance (0.2); // 20cm
+            ec.setMinClusterSize (minimum_cluster_size);
+            ec.setMaxClusterSize (25000);
+            ec.setSearchMethod (tree);
+            ec.setInputCloud (cloud_filtered);
+            ec.extract (cluster_indices);
+            if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
 
-            // Create the segmentation object for the planar model and set all the parameters
-            pcl::SACSegmentation<point_type> seg;
-            pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-            pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-            pcl::PointCloud<point_type>::Ptr cloud_plane (new pcl::PointCloud<point_type> ());
-            pcl::PCDWriter writer;
-            seg.setOptimizeCoefficients (true);
-            seg.setModelType (pcl::SACMODEL_PLANE);
-            seg.setMethodType (pcl::SAC_RANSAC);
-            seg.setMaxIterations (100);
-            seg.setDistanceThreshold (0.02);
-            
-            int nr_points = (int) cloud_filtered->points.size ();
-            
-            // Remove NaNs
-            cloud_filtered->is_dense = false;
-            std::vector< int > a; 
-            pcl::removeNaNFromPointCloud(*cloud_filtered, *cloud_filtered, a);
-            
-            if(cloud_filtered->size() < minimum_cluster_size)
+            int biggest_cluster_size = 0; 
+            int biggest_cluster_index = 0;
+
+            if(cluster_indices.size() == 0)
             {
-                // Not enough points
-                obj.prob = -1; 
+                obj.prob = -1;
             }
             else
             {
-                // Creating the KdTree object for the search method of the extraction
-                pcl::search::KdTree<point_type>::Ptr tree (new pcl::search::KdTree<point_type>);
-                tree->setInputCloud (cloud_filtered);
-
-                std::vector<pcl::PointIndices> cluster_indices;
-                pcl::EuclideanClusterExtraction<point_type> ec;
-                ec.setClusterTolerance (0.5); // 50cm
-                ec.setMinClusterSize (minimum_cluster_size);
-                ec.setMaxClusterSize (25000);
-                ec.setSearchMethod (tree);
-                ec.setInputCloud (cloud_filtered);
-                ec.extract (cluster_indices);
-                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
-
-                int biggest_cluster_size = 0; 
-                int biggest_cluster_index = 0;
-
-                if(cluster_indices.size() == 0)
+                // Find cluster with most inliers
+                for (int i = 0; i < cluster_indices.size(); i++)
                 {
-                    obj.prob = -1;
+                    auto indices = cluster_indices.at(i).indices;
+                    if(indices.size() > biggest_cluster_size )
+                    {
+                        biggest_cluster_index = i;
+                    }
                 }
-                else
+
+                auto indices = cluster_indices.at(biggest_cluster_index).indices;
+
+                // Find center of cluster
+                double meanx = 0;
+                double meany = 0;
+                double meanz = 0;
+
+                for (int i = 0; i < indices.size(); i++ )
                 {
-                    for (int i = 0; i < cluster_indices.size(); i++)
-                    {
-                        auto indices = cluster_indices.at(i).indices;
-                        if(indices.size() > biggest_cluster_size )
-                        {
-                            biggest_cluster_index = i;
-                        }
-                    }
+                    int index = indices.at(i);
+                    point_type point = cloud_filtered->points[index]; 
+                    
+                    meanx += point.x / (indices.size());
+                    meany += point.y / (indices.size());
+                    meanz += point.z / (indices.size());
 
-                    auto indices = cluster_indices.at(biggest_cluster_index).indices;
-
-                    // Find center of cluster
-                    double meanx = 0;
-                    double meany = 0;
-                    double meanz = 0;
-
-                    for (int i = 0; i < indices.size(); i++ )
-                    {
-                        int index = indices.at(i);
-                        point_type point = cloud_filtered->points[index]; 
-                        
-                        meanx += point.x / (indices.size());
-                        meany += point.y / (indices.size());
-                        meanz += point.z / (indices.size());
-
-                        if(publish_inliers) inlier_cloud.push_back(point);
-                    }
-                    inlier_cloud.width = indices.size();
-                    inlier_cloud.height = 1; 
-                    inlier_cloud.is_dense = true;
-
-                    position = Projector::convertToMapFrame(pcl::PointXYZ(meanx, meany, meanz));
+                    if(publish_inliers) inlier_cloud.push_back(point);
                 }
+                inlier_cloud.width = indices.size();
+                inlier_cloud.height = 1; 
+                inlier_cloud.is_dense = true;
+
+                position = Projector::convertToMapFrame(pcl::PointXYZ(meanx, meany, meanz));
             }
 
-        }
-
-        // Simple cluster 
-        else if (method_bench == 2)
-        {
-            pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
-
-            // Create the filtering object: downsample the dataset using a leaf size of 1cm
-            pcl::VoxelGrid<point_type> vg;
-            pcl::PointCloud<point_type>::Ptr cloud_filtered (new pcl::PointCloud<point_type>), cloud_f (new pcl::PointCloud<point_type>);
-            vg.setInputCloud (cloud);
-            vg.setLeafSize (0.01f, 0.01f, 0.01f);
-            vg.filter (*cloud_filtered);
-
-            // (Do not remove planes from model ...)
-            
-            // Remove NaNs
-            cloud_filtered->is_dense = false;
-            std::vector< int > a; 
-            pcl::removeNaNFromPointCloud(*cloud_filtered, *cloud_filtered, a);
-            
-            if(cloud_filtered->size() < minimum_cluster_size)
-            {
-                // Not enough points
-                obj.prob = -1; 
-            }
-            else
-            {
-                // Creating the KdTree object for the search method of the extraction
-                pcl::search::KdTree<point_type>::Ptr tree (new pcl::search::KdTree<point_type>);
-                tree->setInputCloud (cloud_filtered);
-
-                std::vector<pcl::PointIndices> cluster_indices;
-                pcl::EuclideanClusterExtraction<point_type> ec;
-                ec.setClusterTolerance (0.2); // 20cm
-                ec.setMinClusterSize (minimum_cluster_size);
-                ec.setMaxClusterSize (25000);
-                ec.setSearchMethod (tree);
-                ec.setInputCloud (cloud_filtered);
-                ec.extract (cluster_indices);
-                if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
-
-                int biggest_cluster_size = 0; 
-                int biggest_cluster_index = 0;
-
-                if(cluster_indices.size() == 0)
-                {
-                    obj.prob = -1;
-                }
-                else
-                {
-                    // Find cluster with most inliers
-                    for (int i = 0; i < cluster_indices.size(); i++)
-                    {
-                        auto indices = cluster_indices.at(i).indices;
-                        if(indices.size() > biggest_cluster_size )
-                        {
-                            biggest_cluster_index = i;
-                        }
-                    }
-
-                    auto indices = cluster_indices.at(biggest_cluster_index).indices;
-
-                    // Find center of cluster
-                    double meanx = 0;
-                    double meany = 0;
-                    double meanz = 0;
-
-                    for (int i = 0; i < indices.size(); i++ )
-                    {
-                        int index = indices.at(i);
-                        point_type point = cloud_filtered->points[index]; 
-                        
-                        meanx += point.x / (indices.size());
-                        meany += point.y / (indices.size());
-                        meanz += point.z / (indices.size());
-
-                        if(publish_inliers) inlier_cloud.push_back(point);
-                    }
-                    inlier_cloud.width = indices.size();
-                    inlier_cloud.height = 1; 
-                    inlier_cloud.is_dense = true;
-
-                    position = Projector::convertToMapFrame(pcl::PointXYZ(meanx, meany, meanz));
-                }
-
-            }
-        }
-
-        else{
-            std::cout << "Unexpected method index for door!" << std::endl;
         }
         
         // Set position back from eigen
@@ -468,14 +340,13 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         obj.angle = 0;
     }
 
-    else if (class_name == "fire" || class_name == "trash")
-    {
+    else {
         obj.prob = 1;
         pcl::PointXYZ position; 
         int minimum_cluster_size = 50;
 
         // Naive approach: get the mean value at the center with a square window
-        if(method_fire == 0)
+        if(projection_method == 0)
         {
             double meanx = 0;
             double meany = 0;
@@ -501,7 +372,7 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
         }
 
         // Remove planes and then apply clustering 
-        else if(method_fire == 1)
+        else if(projection_method == 2)
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -625,8 +496,8 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
         }
 
-        // Simple cluster 
-        else if (method_fire == 2)
+        // Simple cluster: default method, or method = 1
+        else
         {
             pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
 
@@ -711,116 +582,11 @@ custom_msgs::WorldObject Projector::process_cloud(std::string class_name, pcl::P
 
             }
         }
-
-        else{
-            std::cout << "Unexpected method index for water!" << std::endl;
-        }
         
         // Set position back from eigen
         obj.x = position.x;
         obj.y = position.y;
         obj.angle = 0;
-    }
-
-    else if (class_name == "person")
-    {
-        obj.prob = 1;
-        pcl::PointXYZ position; 
-        int minimum_cluster_size = 10;
-
-        pcl::PointCloud<point_type>::Ptr cloud (obj_cloud.makeShared());
-
-        // Create the filtering object: downsample the dataset using a leaf size of 1cm
-        pcl::VoxelGrid<point_type> vg;
-        pcl::PointCloud<point_type>::Ptr cloud_filtered (new pcl::PointCloud<point_type>), cloud_f (new pcl::PointCloud<point_type>);
-        vg.setInputCloud (cloud);
-        vg.setLeafSize (0.01f, 0.01f, 0.01f);
-        vg.filter (*cloud_filtered);
-
-        // (Do not remove planes from model ...)
-        
-        // Remove NaNs
-        cloud_filtered->is_dense = false;
-        std::vector< int > a; 
-        pcl::removeNaNFromPointCloud(*cloud_filtered, *cloud_filtered, a);
-        
-        if(cloud_filtered->size() < minimum_cluster_size)
-        {
-            // Not enough points
-            obj.prob = -1; 
-        }
-        else
-        {
-            // Creating the KdTree object for the search method of the extraction
-            pcl::search::KdTree<point_type>::Ptr tree (new pcl::search::KdTree<point_type>);
-            tree->setInputCloud (cloud_filtered);
-
-            std::vector<pcl::PointIndices> cluster_indices;
-            pcl::EuclideanClusterExtraction<point_type> ec;
-            ec.setClusterTolerance (0.2); // 20cm
-            ec.setMinClusterSize (minimum_cluster_size);
-            ec.setMaxClusterSize (25000);
-            ec.setSearchMethod (tree);
-            ec.setInputCloud (cloud_filtered);
-            ec.extract (cluster_indices);
-            if(!quiet_mode) ROS_INFO_STREAM("\nclass: "+ obj.objClass + ", clusters: " +std::to_string( cluster_indices.size()));
-
-            int biggest_cluster_size = 0; 
-            int biggest_cluster_index = 0;
-
-            if(cluster_indices.size() == 0)
-            {
-                obj.prob = -1;
-            }
-            else
-            {
-                // Find cluster with most inliers
-                for (int i = 0; i < cluster_indices.size(); i++)
-                {
-                    auto indices = cluster_indices.at(i).indices;
-                    if(indices.size() > biggest_cluster_size )
-                    {
-                        biggest_cluster_index = i;
-                    }
-                }
-
-                auto indices = cluster_indices.at(biggest_cluster_index).indices;
-
-                // Find center of cluster
-                double meanx = 0;
-                double meany = 0;
-                double meanz = 0;
-
-                for (int i = 0; i < indices.size(); i++ )
-                {
-                    int index = indices.at(i);
-                    point_type point = cloud_filtered->points[index]; 
-                    
-                    meanx += point.x / (indices.size());
-                    meany += point.y / (indices.size());
-                    meanz += point.z / (indices.size());
-
-                    if(publish_inliers) inlier_cloud.push_back(point);
-                }
-                inlier_cloud.width = indices.size();
-                inlier_cloud.height = 1; 
-                inlier_cloud.is_dense = true;
-
-                position = Projector::convertToMapFrame(pcl::PointXYZ(meanx, meany, meanz));
-            }
-
-        }
-        
-        // Set position back from eigen
-        obj.x = position.x;
-        obj.y = position.y;
-        obj.angle = 0;
-    }
-
-    else
-    {
-        if(!quiet_mode) ROS_INFO_STREAM("\nUnimplemented");
-        obj.prob = -1.0;
     }
 
     // Publish clustered cloud?
@@ -953,11 +719,14 @@ void Projector::boxes_callback(const darknet_ros_msgs::BoundingBoxes::ConstPtr &
                 position.z = 0.2;
                 markObject(position, obj.objClass, global_frame, "cube", i+100, 0.4, 0.4, 0.3, 0.8, 0.7, 0.1);
             }
-
             else if (obj.objClass == "person")
             {
                 position.z = 1.1;
                 markObject(position, obj.objClass, global_frame, "cylinder", i+100, 0.4, 0.4, 1.6, 0.9, 0.5, 0.1);
+            }
+            else {
+                // Default marker
+                markObject(position, obj.objClass, global_frame, "cube", i+100, 0.3, 0.3, 0.3, 0.7, 0.05, 0.7);
             }
         }
         

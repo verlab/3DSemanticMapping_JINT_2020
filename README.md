@@ -21,8 +21,6 @@ Install ROS Kinetic and CUDA.
 
 > cd ~/catkin_ws/
 
-> catkin config --default-devel-space --default-build-space --default-install-space --default-source-space --cmake-args -DCMAKE_BUILD_TYPE=Release
-
 > echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
 
 ### Clone repository to src/ folder
@@ -36,6 +34,8 @@ Install ROS Kinetic and CUDA.
 
 > cd ~/catkin_ws/
 
+> catkin config --default-devel-space --default-build-space --default-install-space --default-source-space --cmake-args -DCMAKE_BUILD_TYPE=Release
+
 > catkin build darknet_ros_msgs
 
 > catkin build custom_msgs
@@ -48,41 +48,40 @@ Install ROS Kinetic and CUDA.
 
 Download rosbag (dataset):
 
-> mkdir _/path/to/dataset/folder_
-
-> cd _/path/to/dataset/folder_
+> roscd auto/../datasets
+ 
+Go to desired dataset, and download the correct one:
 
 > wget https://www.verlab.dcc.ufmg.br/hyperlapse/downloads/turtlebot_semantic_mapping/bag_dataset.zip
 
 ### Start Test
 
-- Terminal 1: 
+- Initialize stack
 
-> roscore
+> roslaunch auto quick_start.launch
 
-- Terminal 2: 
+- Go to dataset folder and start playing bag with SLAM: 
 
-> rviz
+> ./rtab-play.sh
 
-_(Set configuration: File > Open Config, select rtab_mapping/rvizconfig.rviz)_
+## (3) Customize configuration
 
-- Terminal 3:
+In order to configure the stack to work on different datasets and classes, some configuration files need to be adjusted:
 
-> cd dataset
+### Object Detection Files
 
->./run_all.sh
+Configuration files related to darknet_ros and yolo detector itself. This includes the following: 
 
-- Terminal 4:  
+- `auto/launch/yolo_detector.launch` : Change the parameters file.
+- `darknet_ros/darknet_ros/config` : Add the new parameters file for new network. Also, update `ros.yaml` topic names. 
+- `darknet_ros/darknet_ros/yolo_network_config/cfg` : Add new network configuration file. 
+- `darknet_ros/darknet_ros/yolo_network_config/weights` : Add new network weights.
 
-> roscd auto/launch
+### Object Projection Files
 
-> roslaunch yolo_detector.launch
+Configuration files related to the 3D projector and the filter. This includes: 
 
-- Terminal 5:  
-
-> roscd auto/launch
-
-> roslaunch obj_positioner.launch
+- `auto/param/object_positioner.yaml` : Every node configuration for the object projection module is there, and it includes topic names, class detection list, frames of reference, camera parameters, etc. 
 
 ### Online test, using physical robot
 

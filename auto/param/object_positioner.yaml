@@ -1,0 +1,34 @@
+# Camera and projection parameters
+camera_cx: 472.65
+camera_cy: 268.7
+camera_fx: 537.0
+camera_fy: 536.95
+max_proj_distance: 8.0
+
+# Object detection classes
+classes:
+    - door
+    - bench
+    - trash
+    - fire
+    - water
+
+# Projection method
+# 0: Naive - median of middle points
+# 1: Preferred - Simple clustering (OR plane segmentation for doors)
+# 2: Advanced - Remove planes and then apply clustering
+# others: defaults to Preferred
+projection_method: 1
+
+# Quiet mode: print less logs
+quiet_mode: false
+
+# Frames of reference
+camera_frame: /kinect2_rgb_optical_frame
+robot_frame: /base_link
+global_frame: /map
+
+# Darknet_ros topics
+pointcloud_topic: /camera/depth_registered/points
+boxes_topic: /darknet_ros/bounding_boxes
+detection_flag_topic: /darknet_ros/flag_detection

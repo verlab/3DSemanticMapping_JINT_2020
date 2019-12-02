@@ -1,4 +1,5 @@
 *.pyc
 *.json
 *.png
+*.bag
 taking_pictures/
