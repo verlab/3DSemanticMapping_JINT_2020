@@ -7,10 +7,6 @@
     <!-- YOLO DETECTOR -->
     <include file="$(find auto)/launch/yolo_detector.launch"> 
     </include>
-
-    <!-- OBJECT POSITIONER -->
-    <include file="$(find auto)/launch/obj_positioner.launch"> 
-    </include>
     
     <!-- RVIZ -->
     <node pkg="rviz" type="rviz" name="rviz_vo" args="-d $(find auto)/rviz_config.rviz" if="$(arg rviz)"/>
