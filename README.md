@@ -2,9 +2,9 @@
 
 <img src='images/teaser.png' align="center" width=900 />
 
-This repository provides a code base to evaluate and test the semantic object mapping from the paper _Extending Maps with Semantic and Contextual Object Information for Robot Navigation_ [(arXiv version)](https://arxiv.org/pdf/2003.06336.pdf). The project core method is an object segmentation that leverages a CNN-based object detector (Yolo) with a 3D model-based segmentation technique (RANSAC) to perform instance semantic segmentation, and to localize, identify, and track different classes of objects in the scene over time. 
+This repository provides a code base to evaluate and test the semantic object mapping from the paper *Extending Maps with Semantic and Contextual Object Information for Robot Navigation* [(arXiv version)](https://arxiv.org/pdf/2003.06336.pdf). The project core method is an object segmentation that leverages a CNN-based object detector (Yolo) with a 3D model-based segmentation technique (RANSAC) to perform instance semantic segmentation, and to localize, identify, and track different classes of objects in the scene over time. 
 
-The package is implemented on ROS and we provide pretrained Yolo model weights and some ROS bags datasets for testing. Please follow the install and setup instructions to run the semantic object mapping system with a rosbag recorded data. This is research code, expect that it can change and any fitness for a particular purpose is disclaimed.
+The package is implemented on ROS and we provide pre-trained Yolo model weights and some ROS bags datasets for testing. Please follow the install and setup instructions to run the semantic object mapping system with a rosbag recorded data. This is research code, expect that it can change and any fitness for a particular purpose is disclaimed.
 
 ## Installation
 
@@ -41,7 +41,7 @@ The provided code can run in two modes: offline and online.
 
 We provide pre-trained weights to detect objects such as "door", "water fountain", "chair", "person", "fire extinguisher". Three datasets containing data streams recorded with a mobile robot are also available for testing. Please have a look on the [project website](https://www.verlab.dcc.ufmg.br/semantic-mapping-for-robotics/) for futher information of these sequences.
 
-First plese download the weights *yolo-custom5.weights* and the rosbag *sequence3_kinect.bag* for testing:
+First plese download the weights **yolo-custom5.weights** and the rosbag **sequence3_kinect.bag** for testing:
 ```shell
 sudo apt install python-pip python-numpy python-scipy
 pip install gdown
@@ -64,10 +64,12 @@ Then press SPACE key on keyboard on terminal 2 to start publishing the sensor to
 ```shell
 roslaunch auto obj_positioner.launch
 ```
-You should have the augmented map display in the *rviz* window on the fly, such as the following images for sequence3-kinect:
-<img src='images/rviz_view1.png' align="left" width=270 hspace="10"/> 
-<img src='images/rviz_view2.png' align="left" width=270 hspace="10"/>
-<img src='images/rviz_view3.png' align="left" width=270 hspace="10"/>
+You should have the augmented map display in the **rviz** window on the fly, such as the following images for sequence3-kinect:
+<p align="middle">
+<img src='images/rviz_view1.png' width=250 hspace="10"/> 
+<img src='images/rviz_view2.png' width=250 hspace="10"/>
+<img src='images/rviz_view3.png' width=250 />
+</p>
 The display of the point cloud superposed with the semantic map is done by marking the option on rviz *MapCloud* to on.
 
 ### Customized configuration
