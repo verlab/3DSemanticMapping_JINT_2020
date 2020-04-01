@@ -52,6 +52,8 @@ pip install tensorflow-gpu==1.14.0
 ```
 And then:
 ```shell
-python -c "import tensorflow as tf; tf.test.is_gpu_available()"
+python -c "import tensorflow as tf; print(tf.test.is_gpu_available())"
 ```
-If everything is ok you will have a *True* printed.
+If everything is ok you will have a *True* printed at the end of the messages. 
+
+*OBS:* after the sanity check you can remove tensorflow if the library is not useful to your projects with `pip uninstall tensorflow-gpu` 
