@@ -2,4 +2,5 @@
 *.json
 *.png
 *.bag
+*.weights
 taking_pictures/
