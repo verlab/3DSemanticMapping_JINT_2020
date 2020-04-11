@@ -27,7 +27,7 @@ vim 3d-object-semantic-mapping/darknet_ros/darknet_ros/CMakeLists.txt
 And then build the packages in the following order:
 ```shell
 cd ~/code/catkin_ws/
-catkin config --default-devel-space --default-build-space --default-install-space --default-source-space --cmake-args -DCMAKE_BUILD_TYPE=Release
+catkin config --default-devel-space --default-build-space --default-install-space --default-source-space --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/gcc-6 -DCMAKE_CXX_COMPILER=/usr/bin/g++-6
 catkin build darknet_ros_msgs
 catkin build custom_msgs
 catkin build
