@@ -137,7 +137,7 @@ During the build step, we specify the following flags for building:
 
 The `darknet_ros` code only compiles with gcc version up to 6, so we specify its path. If it is installed in another path you have to update the flag.
 
-### ROS Melodic
+### ROS Melodic Turtlebot 2 Packages
 
 There is currently no **official** turtlebot2 package for ROS Melodic, so we get TF errors because our set up assumes transformations are being published from the robot model server _(even though those are static transformations, hence this could be circumvented using a single static publisher)_.
 
