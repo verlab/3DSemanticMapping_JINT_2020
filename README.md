@@ -2,7 +2,7 @@
 
 <img src='images/teaser.png' align="center" width=900 />
 
-This repository provides a code base to evaluate and test the semantic object mapping from the paper *Extending Maps with Semantic and Contextual Object Information for Robot Navigation* [(arXiv version)](https://arxiv.org/pdf/2003.06336.pdf). The project core method is an object segmentation that leverages a CNN-based object detector (Yolo) with a 3D model-based segmentation technique (RANSAC) to perform instance semantic segmentation, and to localize, identify, and track different classes of objects in the scene over time. 
+This repository provides a code base to evaluate and test the semantic object mapping from the paper _Extending Maps with Semantic and Contextual Object Information for Robot Navigation_ [(arXiv version)](https://arxiv.org/pdf/2003.06336.pdf). The project core method is an object segmentation that leverages a CNN-based object detector (Yolo) with a 3D model-based segmentation technique (RANSAC) to perform instance semantic segmentation, and to localize, identify, and track different classes of objects in the scene over time.
 
 The package is implemented on ROS and we provide pre-trained Yolo model weights and some ROS bags datasets for testing. Please follow the install and setup instructions to run the semantic object mapping system with a rosbag recorded data. This is research code, expect that it can change and any fitness for a particular purpose is disclaimed.
 
@@ -10,21 +10,26 @@ The package is implemented on ROS and we provide pre-trained Yolo model weights 
 
 The install steps were tested on Ubuntu 16.04, ROS Kinetic and Python 2.7. The package requires ROS, Catkin and CUDNN properly installed. We divide instructions to meet these requirements in two parts, including some intermediate sanity check tips:
 
-- ROS and Catkin workspace setup (if not set already): Please go to [INSTALL_ROS.md](docs/INSTALL_ROS.md) for detailed instructions.
-- CUDA/CUDNN installation (if not set already): Please refer to [INSTALL_CUDNN.md](docs/INSTALL_CUDNN.md) for detailed instructions.
+-   ROS and Catkin workspace setup (if not set already): Please go to [INSTALL_ROS.md](docs/INSTALL_ROS.md) for detailed instructions.
+-   CUDA/CUDNN installation (if not set already): Please refer to [INSTALL_CUDNN.md](docs/INSTALL_CUDNN.md) for detailed instructions.
 
 ## Build Mapping Project
 
 Once the package requirements are met, you can download and build the package uisng the following instructions:
+
 ```shell
 cd ~/code/catkin_ws/src
 git clone --recurse-submodules https://github.com/verlab/3d-object-semantic-mapping.git
 ```
-Before compiling the project, you might need to change line 23 in file **"~/code/catkin_ws/src/3d-object-semantic-mapping/darknet_ros/darknet_ros/CMakeLists.txt"** to assert the cuda compute capability to your GPU. For a compute capability of 5.0, change this line to *-gencode arch=compute_50,code=[sm_50,compute_50]*  (please have a look at the instructions at [INSTALL_CUDNN.md](docs/INSTALL_CUDNN.md)):
+
+Before compiling the project, you might need to change line 23 in file **"~/code/catkin_ws/src/3d-object-semantic-mapping/darknet_ros/darknet_ros/CMakeLists.txt"** to assert the cuda compute capability to your GPU. For a compute capability of 5.0, change this line to _-gencode arch=compute_50,code=[sm_50,compute_50]_ (please have a look at the instructions at [INSTALL_CUDNN.md](docs/INSTALL_CUDNN.md)):
+
 ```shell
 vim 3d-object-semantic-mapping/darknet_ros/darknet_ros/CMakeLists.txt
 ```
+
 And then build the packages in the following order:
+
 ```shell
 cd ~/code/catkin_ws/
 catkin config --default-devel-space --default-build-space --default-install-space --default-source-space --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/gcc-6 -DCMAKE_CXX_COMPILER=/usr/bin/g++-6
@@ -33,15 +38,17 @@ catkin build custom_msgs
 catkin build
 source ~/.bashrc
 ```
+
 ## Getting Started: Package Testing
 
-The provided code can run in two modes: offline and online. 
+The provided code can run in two modes: offline and online.
 
 ### Offline Testing
 
 We provide pre-trained weights to detect objects such as "door", "water fountain", "chair", "person", "fire extinguisher". Three datasets containing data streams recorded with a mobile robot are also available for testing. Please have a look on the [project website](https://www.verlab.dcc.ufmg.br/semantic-mapping-for-robotics/) for futher information of these sequences.
 
 First plese download the weights **yolo-custom5.weights** and the rosbag **sequence3_kinect.bag** for testing:
+
 ```shell
 sudo apt install python-pip python-numpy python-scipy
 pip install gdown
@@ -51,20 +58,28 @@ gdown https://drive.google.com/uc?id=1Q1oik-R7yPJn6Lh9iMjj5ZMYx13xwliE
 roscd auto/../datasets/sequence3-kinect/files
 gdown https://drive.google.com/uc?id=1u5wpCdpMP81VrADteEpRVhvWpbrq2Y1Q
 ```
+
 The package running requires three terminal windows (shells). In the first terminal (shell) start **darknet_ros** and **rviz**:
+
 ```shell
 roslaunch auto quick_start.launch
 ```
-In terminal 2 go to dataset folder and start playing the dataset bag with RATB-SLAM: 
+
+In terminal 2 go to dataset folder and start playing the dataset bag with RATB-SLAM:
+
 ```shell
 roscd auto/../datasets/sequence3-kinect
 ./rtab-play.sh
 ```
+
 Then press SPACE key on keyboard on terminal 2 to start publishing the sensor topics. Then open terminal 3 and start the object localizer node:
+
 ```shell
 roslaunch auto obj_positioner.launch
 ```
+
 You should have the augmented map display in the **rviz** window on the fly, such as the following images for sequence3-kinect:
+
 <p align="middle">
 <img src='images/rviz_view1.png' width=250 hspace="10"/> 
 <img src='images/rviz_view2.png' width=250 hspace="10"/>
@@ -74,41 +89,64 @@ The display of the point cloud superposed with the semantic map is done by marki
 
 ### Customized configuration
 
-Few modificateasy to use  with your own bags and other network weights. 
+Few modificateasy to use with your own bags and other network weights.
 In order to configure the stack to work on different datasets and classes, some configuration files need to be adjusted:
 
 #### Object detection configuration files
 
-Configuration files related to darknet_ros and yolo detector itself. This includes the following: 
+Configuration files related to darknet_ros and yolo detector itself. This includes the following:
 
-- `auto/launch/yolo_detector.launch` : Change the parameters file.
-- `darknet_ros/darknet_ros/config` : Add the new parameters file for new network. Also, update `ros.yaml` topic names. 
-- `darknet_ros/darknet_ros/yolo_network_config/cfg` : Add new network configuration file. 
-- `darknet_ros/darknet_ros/yolo_network_config/weights` : Add new network weights.
+-   `auto/launch/yolo_detector.launch` : Change the parameters file.
+-   `darknet_ros/darknet_ros/config` : Add the new parameters file for new network. Also, update `ros.yaml` topic names.
+-   `darknet_ros/darknet_ros/yolo_network_config/cfg` : Add new network configuration file.
+-   `darknet_ros/darknet_ros/yolo_network_config/weights` : Add new network weights.
 
 #### Object localization node configuration
 
-Configuration files related to the 3D projector and the filter. This includes: 
+Configuration files related to the 3D projector and the filter. This includes:
 
-- `auto/param/object_positioner.yaml` : Every node configuration for the object projection module is there, and it includes topic names, class detection list, frames of reference, camera parameters, etc. 
+-   `auto/param/object_positioner.yaml` : Every node configuration for the object projection module is there, and it includes topic names, class detection list, frames of reference, camera parameters, etc.
 
 ### Online Testing
 
 The online testing mode requires a physical robot mounted with an RGB-D camera.
 Requirements: Kobuki base/other turtlebot base, RGBD camera, laser scan (optional) (RGBD camera depth stream can be converted to laser scan, but usually has lower range and accuracy).
 
-Start robot base: 
+Start robot base:
+
 ```shell
 roslaunch auto initialize.launch
 ```
-And then run the slam and yolo_detector nodes as described in the offline test. 
+
+And then run the slam and yolo_detector nodes as described in the offline test.
 
 **Notes**
-*Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to* __false.__ *Only the rosbag play and robot description launch files should publish tf's.*
+_Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to_ **false.** _Only the rosbag play and robot description launch files should publish tf's._
+
+## Common Issues
+
+_We've encoutered these issues mostly from trying to run the code from Ubuntu 18 with ROS Melodic._
+
+### Wrong gcc and g++ specified path
+
+During the build step, we specify the following flags for building:
+
+```shell
+-DCMAKE_C_COMPILER=/usr/bin/gcc-6 -DCMAKE_CXX_COMPILER=/usr/bin/g++-6
+```
+
+The `darknet_ros` code only compiles with gcc version up to 6, so we specify its path. If it is installed in another path you have to update the flag.
+
+### ROS Melodic
+
+There is currently no **official** turtlebot2 package for ROS Melodic, so we get TF errors because our set up assumes transformations are being published from the robot model server _(even though those are static transformations, hence this could be circumvented using a single static publisher)_.
+
+To install turtlebot 2 for ROS Melodic you can use [this repository](https://github.com/gaunthan/Turtlebot2-On-Melodic).
 
 ## Citation & Contact
 
 If you find this code useful for your research, please consider citing the following papers:
+
 ```
     @article{semanticMapVerlab20,
 	  Title          = {Extending Maps with Semantic and Contextual Object Information for Robot Navigation: a Learning-Based Framework using Visual and Depth Cues},
@@ -123,4 +161,4 @@ If you find this code useful for your research, please consider citing the follo
 	  Booktitle      = {IEEE Latin American Robotics Symposium, LARS},
 	  Year           = {2018}
 	}
- ``` 
+```
