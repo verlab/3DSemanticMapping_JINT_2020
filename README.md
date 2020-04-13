@@ -121,27 +121,12 @@ roslaunch auto initialize.launch
 And then run the slam and yolo_detector nodes as described in the offline test.
 
 **Notes**
-_Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to_ **false.** _Only the rosbag play and robot description launch files should publish tf's._
+_Before usage, check that no packages publish tf transformations, i.e., 'publish_tf' flag in launch files are set to_ 
+**false.** _Only the rosbag play and robot description launch files should publish tf's._
 
-## Common Issues
+### Troubleshooting to Install on Ubuntu 18.04 and ROS Melodic
 
-_We've encoutered these issues mostly from trying to run the code from Ubuntu 18 with ROS Melodic._
-
-### Wrong gcc and g++ specified path
-
-During the build step, we specify the following flags for building:
-
-```shell
--DCMAKE_C_COMPILER=/usr/bin/gcc-6 -DCMAKE_CXX_COMPILER=/usr/bin/g++-6
-```
-
-The `darknet_ros` code only compiles with gcc version up to 6, so we specify its path. If it is installed in another path you have to update the flag.
-
-### ROS Melodic Turtlebot 2 Packages
-
-There is currently no **official** turtlebot2 package for ROS Melodic, so we get TF errors because our set up assumes transformations are being published from the robot model server _(even though those are static transformations, hence this could be circumvented using a single static publisher)_.
-
-To install turtlebot 2 for ROS Melodic you can use [this repository](https://github.com/gaunthan/Turtlebot2-On-Melodic).
+- Please have a look at [INSTALL_MELODIC.md](docs/INSTALL_MELODIC.md) to adjust the installation.
 
 ## Citation & Contact
 
